@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+
+<robot name="kortex_insert" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find kortex_description)/robots/gen3_robotiq_2f_140.xacro"/>
+
+  <link name="world" />
+
+  <joint name="insert_link_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="insert_link" />
+  </joint>
+
+  <link name="insert_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size=".2 .2 .2"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size=".2 .2 .2"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="-0.01103 0 0.002" rpy="0 0 0"/>
+      <mass value="2.844"/>
+      <inertia
+        ixx="0.018819942" ixy="0" ixz="-0.000101519"
+        iyy="0.057333716" iyz="0"
+        izz="0.074201740"/>
+    </inertial>
+  </link>
+
+   <!-- Load world prismatic joints-->
+  <xacro:macro name="prismatic_joint_macro" params="axis_name xyz parent child">
+    <joint name="kortex_${axis_name}_joint" type="prismatic">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${parent}"/>
+      <child link="${child}" />
+      <axis xyz="${xyz}"/>
+      <limit effort="1000" lower="-100" upper="100" velocity="2"/>
+    </joint>
+
+    <xacro:if value="${child != 'base_link'}">
+      <link name="arm_${axis_name}_link">
+        <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="1" />
+        <inertia
+          ixx="1.0" ixy="0.0" ixz="0.0"
+          iyy="1.0" iyz="0.0"
+          izz="1.0" />
+        </inertial>
+      </link>
+    </xacro:if>
+
+    <transmission name="kortex_${axis_name}_transmission">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="kortex_${axis_name}_joint">
+          <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="kortex_${axis_name}_joint_motor">
+          <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+  <xacro:prismatic_joint_macro axis_name="x" xyz="1 0 0" parent="world" child="arm_x_link"/>
+  <xacro:prismatic_joint_macro axis_name="y" xyz="0 1 0" parent="arm_x_link" child="arm_y_link"/>
+  <xacro:prismatic_joint_macro axis_name="z" xyz="0 0 1" parent="arm_y_link" child="arm_z_link"/>
+
+  <!-- Load world rotation joint -->
+  <joint name="kortex_z_rotation_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="arm_z_link"/>
+    <child link="base_link" />
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" velocity="2"/>
+  </joint>
+
+  <transmission name="kortex_z_rotation_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="kortex_z_rotation_joint">
+        <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="kortex_z_rotation_joint_motor">
+        <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+    </plugin>
+  </gazebo>
+</robot>

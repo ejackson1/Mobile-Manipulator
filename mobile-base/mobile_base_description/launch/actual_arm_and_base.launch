@@ -1,0 +1,27 @@
+<launch>
+  <arg name="arm" default="gen3" /> <!-- determines which arm to launch from command line -->
+  <param name="arm/name" value="$(arg arm)" /> 
+  <param name="arm/dof" value="7"/>
+
+  <arg name="start_rviz" default="true" />
+  <arg name="remote" default="true" />
+
+  <group if="$(eval arm == 'panda')">
+    <!-- TODO: load panda robot descr-->
+  </group>
+
+  <group if="$(eval arm == 'gen3')">
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find kortex_description)/robots/gen3_robotiq_2f_85.xacro dof:=7 sim:=false"/>
+
+    <include file="$(find kortex_insert_description)/launch/host_moveit.launch" pass_all_args="true"/>
+
+    <!-- TODO: LAUNCH REMOTELY-->
+    <include file="$(find kortex_insert_description)/launch/remote_kinova_driver.launch" pass_all_args="true" unless="$(arg remote)"/>
+  </group>
+
+  <!-- start moveit server -->
+  <include file="$(find abstract_arm)/launch/moveItServer.launch" pass_all_args="true"/>
+
+  <!-- TODO: start base server (elevator and base services) -->
+
+</launch>

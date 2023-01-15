@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot name="mobile_base" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="PI" value="3.1415926535897931" />
+
+  <xacro:property name="base_dimensions" value=".9 .7 .3" /> <!-- 35 by 28 by 12 inches-->
+  
+  <link name="world" />
+  
+  <link name="base_footprint" />
+
+  <joint name="chassis_link_joint" type="fixed">
+    <origin xyz="0 0 0.05" rpy="0 0 0" />
+    <parent link="base_footprint"/>
+    <child link="chassis_link" />
+  </joint>
+
+  <!-- chassis link -->
+  <link name="chassis_link">
+    <visual>
+      <origin xyz="0 0 .3" rpy="0 0 0" />
+      <geometry>
+        <!-- <box size="${base_dimensions}"/> -->
+        <mesh filename="$(find mobile_base_description)/meshes/Chassis_with_Suspension_fixed_origin.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 .3"/>
+      <geometry>
+        <box size="${base_dimensions}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- Fill in w/ CAD values -->
+      <origin xyz="-0.01103 0 0.002" rpy="0 0 0"/>
+      <mass value="2.844"/>
+      <inertia
+        ixx="0.018819942" ixy="0" ixz="-0.000101519"
+        iyy="0.057333716" iyz="0"
+        izz="0.074201740"/>
+    </inertial>
+  </link>
+
+
+  <!-- Attach wheels -->
+  <xacro:include filename="$(find mobile_base_description)/urdf/wheel/wheel.xacro" />
+  <xacro:wheel_macro index="1" parent="chassis_link" origin=".4 .4 .08"/>
+  <xacro:wheel_macro index="2" parent="chassis_link" origin=".4 -.4 .08"/>
+  <xacro:wheel_macro index="3" parent="chassis_link" origin="-.4 -.4 .08"/>
+  <xacro:wheel_macro index="4" parent="chassis_link" origin="-.4 .4 .08"/>
+
+  <!-- Load gazebo file-->
+  <xacro:include filename="$(find mobile_base_description)/urdf/base/model.gazebo" />
+
+  <!-- Load world prismatic joints-->
+  <xacro:macro name="prismatic_joint_macro" params="axis_name xyz parent child">
+    <joint name="base_${axis_name}_joint" type="prismatic">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${parent}"/>
+      <child link="${child}" />
+      <axis xyz="${xyz}"/>
+      <limit effort="1000" lower="-100" upper="100" velocity="2"/>
+    </joint>
+
+    <xacro:if value="${child != 'base_footprint'}">
+      <link name="base_${axis_name}_link">
+        <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="1" />
+        <inertia
+          ixx="1.0" ixy="0.0" ixz="0.0"
+          iyy="1.0" iyz="0.0"
+          izz="1.0" />
+        </inertial>
+      </link>
+    </xacro:if>
+
+    <transmission name="base_${axis_name}_transmission">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="base_${axis_name}_joint">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="base_${axis_name}_joint_motor">
+          <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+  <xacro:prismatic_joint_macro axis_name="x" xyz="1 0 0" parent="world" child="base_x_link"/>
+  <xacro:prismatic_joint_macro axis_name="y" xyz="0 1 0" parent="base_x_link" child="base_y_link"/>
+  <xacro:prismatic_joint_macro axis_name="z" xyz="0 0 1" parent="base_y_link" child="base_z_link"/>
+
+  <!-- Load world rotation joint -->
+  <joint name="base_z_rotation_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_z_link"/>
+    <child link="base_footprint" />
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="2"/>
+  </joint>
+
+  <transmission name="base_z_rotation_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="base_z_rotation_joint">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="base_z_rotation_joint_motor">
+        <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+</robot>

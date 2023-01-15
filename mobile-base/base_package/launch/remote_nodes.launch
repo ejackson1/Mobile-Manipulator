@@ -1,0 +1,15 @@
+<launch>
+    <arg name="arm" default="gen3" /> <!-- determines which arm to launch from command line -->
+
+    <node name="motor_controller" pkg="base_package" type="motor_controller.py" output="screen" />
+    <node name="encoder_reader" pkg="base_package" type="jack_encoder_readings.py" output="screen" />
+    <node name="limit_switches" pkg="base_package" type="limit_switches.py" output="screen" />
+
+    <group if="$(eval arm == 'gen3')">
+        <include file="$(find kortex_insert_description)/launch/remote_kinova_driver.launch" />
+    </group>
+
+    <group if="$(eval arm == 'panda')">
+    <!-- TODO: launch remote panda driver-->
+  </group>
+</launch>

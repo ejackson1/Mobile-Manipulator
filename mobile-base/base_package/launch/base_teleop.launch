@@ -1,0 +1,25 @@
+<launch>
+    <arg name="run_sim" default="false" />
+    <arg name="remote" default="false" />
+    <arg name="p_controller" default="false" />
+
+    <group if="$(arg remote)">
+        <!-- NOTE: you must add "raspberrypi <rpi's address> to /etc/hosts for rpi to resolve its ip correctly"-->
+        <machine name="raspberry_pi" address="raspberrypi" env-loader="/home/pi/Documents/MQP_ws/devel/env.sh" user="pi" password="password" /> 
+        <!-- yes I know password is bad, no I don't care -->
+
+        <node machine="raspberry_pi" name="motor_controller" pkg="base_package" type="motor_controller.py" output="screen" />
+        <node machine="raspberry_pi" name="encoder_reader" pkg="base_package" type="jack_encoder_readings.py" output="screen" />
+    </group>
+
+    <node name="mecanum_logic" pkg="base_package" type="mecanum_logic.py" output="screen" />
+
+    <node name="elevator_logic" pkg="base_package" type="elevator_logic_p_controller.py" output="screen" if="$(arg p_controller)"/>
+    <node name="elevator_logic" pkg="base_package" type="elevator_logic_simple_controller.py" output="screen" unless="$(arg p_controller)"/>
+
+    <node name="joy_controller" pkg="joy" type="joy_node" output="screen" />
+
+
+    <include file="$(find mobile_base_simulation)/launch/abstract_arm_and_base.launch" if="$(arg run_sim)"/>
+
+</launch>

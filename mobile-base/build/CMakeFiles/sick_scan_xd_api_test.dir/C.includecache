@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/edward/Classes/Thesis/src/mobile-base/sick_scan_xd/include/sick_scan_xd_api/sick_scan_api.h
+stdint.h
+-
+
+/home/edward/Classes/Thesis/src/mobile-base/sick_scan_xd/test/src/sick_scan_xd_api/sick_scan_xd_api_wrapper.c
+windows.h
+-
+dlfcn.h
+-
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+ctype.h
+-
+sick_scan_xd_api/sick_scan_api.h
+/home/edward/Classes/Thesis/src/mobile-base/sick_scan_xd/test/src/sick_scan_xd_api/sick_scan_xd_api/sick_scan_api.h
+

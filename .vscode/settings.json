@@ -1,0 +1,20 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/edward/Classes/Thesis/devel_isolated/sick_scan/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/kortex_driver/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/base_package/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/abstract_arm/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/task_manager/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/install_isolated/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/edward/Classes/Thesis/devel_isolated/sick_scan/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/kortex_driver/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/base_package/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/abstract_arm/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/devel_isolated/task_manager/lib/python3/dist-packages",
+        "/home/edward/Classes/Thesis/install_isolated/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ]
+}

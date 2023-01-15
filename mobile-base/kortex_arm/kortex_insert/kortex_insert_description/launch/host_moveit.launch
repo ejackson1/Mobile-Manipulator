@@ -1,0 +1,24 @@
+<launch>
+    <!-- Arm configuration -->
+    <arg name="arm" default="gen3"/>
+    <arg name="dof" default="7" if="$(eval arg('arm') == 'gen3')"/> <!-- Number of degrees of freedom of the arm -->
+
+    <!-- Gripper configuration -->
+    <arg name="gripper" default="robotiq_2f_85"/>
+
+    <!-- Namespace -->
+    <arg name="robot_name" default="my_$(arg arm)"/>
+
+    <group ns="/my_gen3">
+        <!-- With gripper -->
+        <include file="$(find kortex_description)/../kortex_move_it_config/$(arg arm)_$(arg gripper)_move_it_config/launch/move_group.launch" unless="$(eval not arg('gripper'))"> 
+            <!-- <arg name="dof" value="$(arg dof)"/>
+            <arg name="use_hard_limits" value="$(arg use_hard_limits)"/>
+            <arg name="prefix" value="$(arg prefix)"/> -->
+        </include>
+
+        <node name="rviz" pkg="rviz" type="rviz" if="$(arg start_rviz)"/> 
+    </group>
+
+    
+</launch>

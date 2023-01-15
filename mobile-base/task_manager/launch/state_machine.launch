@@ -1,0 +1,10 @@
+<launch>
+    <arg name="sim" default="false" />
+    <arg name="arm" default="panda" /> <!-- determines which arm to launch from command line -->
+
+    <node name="state_machine" pkg="task_manager" type="state_machine.py" output="screen"/>
+
+    <include file="$(find mobile_base_simulation)/launch/simulated_arm_and_base.launch" if="$(arg sim)" pass_all_args="true"/>
+    <include file="$(find mobile_base_description)/launch/actual_arm_and_base.launch" pass_all_args="true"/>
+
+</launch>

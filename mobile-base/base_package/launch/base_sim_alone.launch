@@ -1,0 +1,38 @@
+<launch>
+  <arg name="start_gazebo" default="true"/>
+  <arg name="gazebo_gui"   default ="true"/>
+  <arg name="start_rviz" default="true"/>
+
+	<include file="$(find gazebo_ros)/launch/empty_world.launch" if="$(arg start_gazebo)">
+    <arg name="world_name" value="worlds/empty.world"/> <!-- Note: the world_name is with respect to GAZEBO_RESOURCE_PATH environmental variable -->
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="$(arg gazebo_gui)"/>
+    <arg name="recording" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="verbose" value="true"/>
+  </include>
+
+  <!-- Load actuator parameters to param server-->  
+  <rosparam file="$(find mobile_base_control)/config/model_control.yaml" command="load" />
+
+  <group ns="base">
+    <!-- Convert xacro and put on parameter server -->
+    <param name="robot_description" command="$(find xacro)/xacro $(find mobile_base_description)/urdf/base/model.xacro" />
+
+    <!-- SPAWN BASE CONTROLLERS-->
+    <node name="base_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+      output="screen" ns="/base" args="joint_state_controller 
+                                      base_x_joint_controller
+                                      base_y_joint_controller
+                                      base_z_joint_controller
+                                      base_z_rotation_controller" />
+    
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+    
+    <!-- Spawn the base into Gazebo -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model mobile_base" />
+
+  </group>
+</launch>

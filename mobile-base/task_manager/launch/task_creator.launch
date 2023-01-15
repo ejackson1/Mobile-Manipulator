@@ -1,0 +1,3 @@
+<launch>
+    <node name="task_creator" pkg="task_manager" type="task_creator.py" output="screen"/>
+</launch>

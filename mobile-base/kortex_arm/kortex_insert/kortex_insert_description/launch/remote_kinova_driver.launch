@@ -1,0 +1,7 @@
+<launch>
+    <arg name="moveit" default="false"/>
+
+    <include file="$(find kortex_driver)/launch/kortex_driver_v2.launch" pass_all_args="true">
+        <arg name="start_moveit" value="$(arg moveit)"/> <!-- should be false if launched remotely-->
+    </include>
+</launch>

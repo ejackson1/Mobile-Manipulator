@@ -1,0 +1,3 @@
+/usr/local/lib/libsick_scan_shared_lib.so
+/usr/local/include/sick_scan_api.h
+/usr/local/include/sick_scan_api.py

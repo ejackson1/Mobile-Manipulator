@@ -1,0 +1,19 @@
+<launch>
+    <!-- params -->
+    <arg name="start_delay_seconds" default="0"/>
+    <arg name="arm" default="panda" />
+
+      <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
+    <!-- <include file="$(find panda_moveit_config)/launch/planning_context.launch">
+        <arg name="load_robot_description" value="true"/>
+    </include> -->
+
+    <!-- Launch the server -->
+    <group if="$(eval arm == 'gen3')">
+      <node name="kortex_moveit_server" pkg="abstract_arm" type="moveItServer.py" ns="my_gen3" output="screen" launch-prefix="bash -c 'sleep $(arg start_delay_seconds); $0 $@' "/>
+    </group>
+
+    <group if="$(eval arm == 'panda')">
+      <node name="panda_moveit_server" pkg="abstract_arm" type="moveItServer.py" output="screen" launch-prefix="bash -c 'sleep $(arg start_delay_seconds); $0 $@' "/>
+    </group>
+</launch>
