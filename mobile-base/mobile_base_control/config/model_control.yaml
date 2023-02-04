@@ -3,27 +3,6 @@ base:
   joint_state_controller:
     type: joint_state_controller/JointStateController
     publish_rate: 50  
-
-  # Velocity Controllers -----------------------------------------
-  # wheel_1_joint_controller:
-  #   type: effort_controllers/JointVelocityController
-  #   joint: wheel_1_joint
-  #   pid: {p: 100.0, i: 10.0, d: 0.01}
-
-  # wheel_2_joint_controller:
-  #   type: effort_controllers/JointVelocityController
-  #   joint: wheel_2_joint
-  #   pid: {p: 100.0, i: 10.0, d: 0.01}
-
-  # wheel_3_joint_controller:
-  #   type: effort_controllers/JointVelocityController
-  #   joint: wheel_3_joint
-  #   pid: {p: 100.0, i: 10.0, d: 0.01}
-
-  # wheel_4_joint_controller:
-  #   type: effort_controllers/JointVelocityController
-  #   joint: wheel_4_joint
-  #   pid: {p: 100.0, i: 10.0, d: 0.01}
   
   # World velocity controllers
   base_x_joint_controller:
@@ -46,4 +25,41 @@ base:
     joint: base_z_rotation_joint
     pid: {p: 100.0, i: 10.0, d: 0.01}
 
+# Velocity Controllers -----------------------------------------
+  # wheel_1_joint_controller:
+  #   type: effort_controllers/JointVelocityController
+  #   joint: wheel_1_joint
+  #   pid: {p: 100.0, i: 10.0, d: 0.01}
 
+  # wheel_2_joint_controller:
+  #   type: effort_controllers/JointVelocityController
+  #   joint: wheel_2_joint
+  #   pid: {p: 100.0, i: 10.0, d: 0.01}
+
+  # wheel_3_joint_controller:
+  #   type: effort_controllers/JointVelocityController
+  #   joint: wheel_3_joint
+  #   pid: {p: 100.0, i: 10.0, d: 0.01}
+
+  # wheel_4_joint_controller:
+  #   type: effort_controllers/JointVelocityController
+  #   joint: wheel_4_joint
+  #   pid: {p: 100.0, i: 10.0, d: 0.01}
+
+
+  # gazebo_ros_control:
+  #   pid_gains:
+  #     base_to_l1a: {p: 40, i: 0.1, d: 10}
+  #     base_to_l1b: {p: 40, i: 0.1, d: 10}
+  #     base_to_l1c: {p: 40, i: 0.1, d: 10}
+  #     base_to_l1d: {p: 40, i: 0.1, d: 10}
+
+  #     l1a_to_mida: {p: 40, i: 0.1, d: 10}
+  #     l1b_to_midb: {p: 40, i: 0.1, d: 10}
+  #     l1c_to_midc: {p: 40, i: 0.1, d: 10}
+  #     l1d_to_midd: {p: 40, i: 0.1, d: 0.1}
+
+  #     mida_to_l3a: {p: 40, i: 0.1, d: 10}
+  #     midb_to_l3b: {p: 40, i: 0.1, d: 10}
+  #     midc_to_l3c: {p: 40, i: 0.1, d: 10}
+  #     midd_to_l3d: {p: 40, i: 0.1, d: 10}

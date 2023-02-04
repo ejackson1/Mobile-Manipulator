@@ -16,5 +16,6 @@
         "/home/edward/Classes/Thesis/devel_isolated/task_manager/lib/python3/dist-packages",
         "/home/edward/Classes/Thesis/install_isolated/lib/python3/dist-packages",
         "/opt/ros/noetic/lib/python3/dist-packages"
-    ]
+    ],
+    "cmake.configureOnOpen": false
 }

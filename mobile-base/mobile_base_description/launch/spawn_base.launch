@@ -13,7 +13,7 @@
                                       base_x_joint_controller
                                       base_y_joint_controller
                                       base_z_joint_controller     
-                                      base_z_rotation_controller" />
+                                      base_z_rotation_controller"/>
 
                                  
     

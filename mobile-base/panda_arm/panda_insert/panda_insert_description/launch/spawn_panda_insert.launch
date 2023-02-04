@@ -49,7 +49,12 @@
 
   <!-- Launch arm controllers -->
   <node name="panda_moveit_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"
-    args="joint_state_controller gazebo_ros_control panda_finger1_controller panda_finger2_controller
+    args="joint_state_controller 
+          gazebo_ros_control
+          panda_finger1_controller
+          panda_finger2_controller
+
+
           panda_x_joint_controller
           panda_y_joint_controller
           panda_z_joint_controller
@@ -61,18 +66,24 @@
   <node name="panda_moveit_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen">
     <remap from="joint_states" to="panda/joint_states" />
   </node>
+  <!-- Launch joint_state_publisher -->
+  <!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" >
+    <remap from="joint_states" to="panda/joint_states"/>
+  </node> -->
 
   <!-- Launch moveit -->
   <include file="$(find panda_moveit_config)/launch/move_group.launch" pass_all_args="true">
     <remap from="joint_states" to="panda/joint_states" />
     <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution" value="false"/>
+    <arg name="fake_execution" value="true"/>
     <arg name="info" value="true"/>
     <arg name="pipeline" value="$(arg pipeline)"  />
   </include>
 
   <node  pkg="rviz" type="rviz" output="screen" name="rviz" if="$(arg rviz)" args="-d $(find abstract_arm)/rviz_config/motion_planning.rviz"/>
-
+  
+<!--   
+  <include file="$(find mobile_base_description)/launch/spawn_base.launch" /> -->
   <!-- <include file="$(find abstract_arm)/launch/moveItServer.launch"/> -->
 
 </launch>

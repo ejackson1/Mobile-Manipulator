@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     # m.is_arm_in_home_pos()
 
-    m.move_arm_angles(m.home_joint_angles)
+    m.move_arm_angles([0, -0.3, 0,- 2.2, 0, 2, 0.78539816])
 
     # Panda finger
     # finger = 0.0
