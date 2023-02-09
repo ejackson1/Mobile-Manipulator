@@ -7,7 +7,7 @@
   <group if="$(eval arm == 'panda')">
     <include file="$(find panda_insert_description)/launch/spawn_panda_insert.launch">
       <arg name="rviz" value="false" />
-      <arg name="x0" value="0"/>
+      <arg name="x0" value="0.12653"/>
       <arg name="y0" value="0"/>
       <arg name="z0" value="1"/>
     </include>
@@ -16,14 +16,14 @@
   <group if="$(eval arm == 'kortex')">
     <include file="$(find kortex_insert_description)/launch/spawn_kortex_insert.launch">
       <arg name="start_rviz" value="true" />
-      <arg name="x0" value="0"/>
+      <arg name="x0" value="0.12653"/>
       <arg name="y0" value="0"/>
       <arg name="z0" value="1"/>
     </include>
   </group>
 
   <!-- spawn moveit server -->
-  <include file="$(find abstract_arm)/launch/moveItServer.launch" pass_all_args="true"/>
+  <!-- <include file="$(find abstract_arm)/launch/moveItServer.launch" pass_all_args="true"/> -->
 
   <!-- spawn base -->
   <include file="$(find mobile_base_description)/launch/spawn_base.launch" />

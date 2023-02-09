@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Axes1
+        - /Marker1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -155,15 +155,14 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Alpha: 1
-      Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: <Fixed Frame>
-      Show Trail: false
-      Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: RVIZ_goal
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -192,7 +191,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.869872093200684
+      Distance: 7.6448516845703125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -200,17 +199,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 1.104233980178833
+        Y: -0.3015402555465698
+        Z: -0.362897127866745
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2753981053829193
+      Pitch: 0.6503980755805969
       Target Frame: <Fixed Frame>
-      Yaw: 0.3403981029987335
+      Yaw: 1.2453980445861816
     Saved: ~
 Window Geometry:
   Displays:
@@ -228,5 +227,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1267
-  X: 1045
-  Y: 1318
+  X: 974
+  Y: 1306

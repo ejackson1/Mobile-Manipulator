@@ -323,10 +323,10 @@ class Panda_Modified(ERobot):
         mm = 1e-3
         tool_offset = (103) * mm
 
-        l_b = Link(ET.tz(0.181673) ,name="base_link", parent=None) # raise
+        l_b = Link(ET.tz(0.284248) ,name="base_link", parent=None) # raise
         l_3 = Link(ET.Rz(), name="base_linkθ", parent=l_b)
         l_2 = Link(ET.tx(), name="base_linkδ", parent=l_3, qlim=[-99999,99999])
-        l_1 = Link(ET.tx(0.181673) +ET.tz(1), name="base2arm", parent=l_2)
+        l_1 = Link(ET.tx(0.181673) * ET.tz(1-0.187907), name="base2arm", parent=l_2) # subtracted value in ET.tz is expirementally found from sim value - fkine.A
 
 
         l0 = Link(ET.tz(0.333) * ET.Rz(), name="link0", parent=l_1)

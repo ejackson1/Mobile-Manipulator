@@ -184,3 +184,33 @@ class arm_utilities:
                 Ain[i, i] = 1
         # print(f"Ainfunc: {Ain}")
         return Ain, Bin
+
+    @staticmethod
+    def mecanum_FK(w_fl, w_fr, w_rl, w_rr, r, lx, ly):
+        """
+        w_fl, w_fr, w_rl, w_rr -> wheel velocities
+        Returns Vx, Vy, and W_z
+        """
+        a_ = np.array(([1, 1, 1, 1],
+                      [-1, 1, 1, -1],
+                      [-1/(lx+ly), 1/(lx+ly), -1/(lx+ly), 1/(lx+ly)]))
+        b_ = np.array(([w_fl], [w_fr], [w_rl], [w_rr]))
+        FK = r/4*a_@b_
+        Vx = float(FK[0])
+        Vy = float(FK[1])
+        W_z = float(FK[2])
+
+        return (Vx, Vy, W_z)
+    @staticmethod
+    def mecanum_IK(v_x, v_y, w_z, r, lx, ly):
+        """
+        """
+        a_ = np.array([1, -1, -(lx+ly)],
+                      [1, 1, (lx+ly)],
+                      [1, 1, -(lx+ly)],
+                      [1, -1, (lx+ly)])
+        b_ = np.array([v_x], [v_y], [w_z])
+
+        IK = 1/r@a_@b_
+
+        return IK
