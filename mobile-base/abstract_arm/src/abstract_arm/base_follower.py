@@ -93,13 +93,13 @@ class Follower(object):
 
                 ## Normal operation
                
-                if quadrantCurrent in [1,2] and quadrantPrev in [1,2]: # both in Quadrants I or II
+                if quadrantCurrent in [1,2] and quadrantPrev in [1,2] and edgeCase is False: # both in Quadrants I or II
                     # Determine direction
                     if euler[2] > self.z_rot_prev: # moving CCW
                         self.z_rot_diff = euler[2] - self.z_rot_prev
                     else: ## moving CW
                         self.z_rot_diff = -(self.z_rot_prev - euler[2])
-                elif quadrantCurrent in [3,4] and quadrantPrev in [3,4]:
+                elif quadrantCurrent in [3,4] and quadrantPrev in [3,4] and edgeCase is False:
                     # Determine direction
                     if euler[2] > self.z_rot_prev: # moving CCW
                         self.z_rot_diff = abs(self.z_rot_prev) - abs(euler[2])
@@ -115,24 +115,18 @@ class Follower(object):
             
                 self.rot_counter += self.z_rot_diff
                 print(f"rot_counter {self.rot_counter}")
-            
+
+
+                ## TODO Work on fixing the drift
+                ## Fix drift 
 
                 # Send positions!
                 
-               
 
                 curr_val = (position[0], position[1], euler[2]) # x, y pos and z rotation
                 # print(curr_val)
 
-                # calc all differences between prev and curr value
-                # differences = list(map(lambda x,y: abs(x - y), curr_val, self.prev_value))
-                # print(differences)
-
-                # if differences are within .2
-                # if all(d < .2 for d in differences):
-                    # publish to arm
-
-                print(f"euler: {euler}")
+                # print(f"euler: {euler}")
                 self.arm_controllers[0].publish(curr_val[0]) # x 
                 self.arm_controllers[1].publish(curr_val[1]) # y
                 self.arm_controllers[3].publish(self.rot_counter) # z_rot

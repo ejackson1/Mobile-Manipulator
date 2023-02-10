@@ -34,7 +34,7 @@ class holistic_control():
         self.R = 0.1524 # wheel radius [m]
         self.W = 0.56848 # distance between the two wheels [m]
         self.lx = self.W/2 # represent the distance from the robot's center to the wheels projected on the x and y axis
-        self.ly = 0.5436278 # represent the distance from the robot's center to the wheels projected on the x and y axis
+        self.ly = 0.3617629 # represent the distance from the robot's center to the wheels projected on the x and y axis
 
 
         self.panda_arm = rtb.models.ETS.Panda() # instantiate arm from rtb
@@ -168,7 +168,6 @@ class holistic_control():
                 r = R.from_quat(quaternion)
                 w2e_T = np.hstack((r.as_matrix(), np.asarray(position).reshape((3,1))))
                 w2e_T = np.vstack((w2e_T, np.array(([0,0,0,1]))))   
-                # print(f"w2e_T {w2e_T}")
 
 
                 # Get current angle of base
@@ -179,16 +178,13 @@ class holistic_control():
                 print(e)
                 return #just retry instantly
             
-            # print(f"w2e_T: {w2e_T}")
             # Grab Manipulator Jacobian in EE frame
-            # mJacob = arm_utilities.mJacobian(self.S, self.arm_dof, self.arm_joint_states)
             arm_joints = self.arm_joint_states
             base_joints = self.base_joint_states
             base_xy = base_joints[:2]
 
             q_h = np.hstack((np.array([0, 0]), arm_joints))
-            self.panda_base_arm.q = q_h # force it to update
-            # self.panda_arm_base.plot(q_h)
+            self.panda_base_arm.q = q_h # force update
 
             # Test plot accuracy
             # print(f"q_h: {q_h}")
@@ -197,60 +193,36 @@ class holistic_control():
 
             
             mJacob = self.panda_base_arm.jacobe(q_h)
-            # print(f"mJacob: {mJacob}")
             # Make Equality Constraints
             Aeq = np.c_[mJacob, np.eye(6)]
             
-            fkine = self.panda_base_arm.fkine(q_h)
-            # print(f"fkine.A {fkine.A}")
-            # return
+            # fkine = self.panda_base_arm.fkine(q_h)
+            # # print(f"fkine.A {fkine.A}")
+            # # return
             v, _ = rtb.p_servo(w2e_T, goalT, 1.5)
-            # v[3:] *= 1.3 # rotate faster?
+            v[3:] *= 1.3 # rotate faster?
             
             beq = v.reshape((6,))
 
-            # print(f"beq: {beq}")
             ## The Inequality Constraints for joint limit avoidance ##
             Ain = np.zeros((self.arm_dof+2 + 6, self.arm_dof+2 + 6))
             bin = np.zeros(self.arm_dof+2 + 6)
 
-            # The minimum angle (in radians) in which the joint is allowed to approach
-            # to its limit
             ps = 0.2
 
-            # The influence angle (in radians) in which the velocity damper
-            # becomes active
             pi = 0.9
 
             # Form the joint limit velocity damper
-            # print(f"armjoints: {arm_joints}")
-            
-            
-            # print(f"qlim: {self.panda_arm.qlim}")
-            # print(f"q_h: {q_h}")
             qlim_h = self.panda_base_arm.qlim
-            # print(f"qlim_h {qlim_h}")
             Ain[: self.arm_dof+2, : self.arm_dof+2], bin[: self.arm_dof+2] = arm_utilities.joint_velocity_damper(ps, pi, n=self.arm_dof+2, q=q_h, qlim=qlim_h)
-            # print(f"Ain: {Ain.shape}\nAin {Ain}")
-            # print(f"bin: {bin.shape}\nBin {bin}")
-            # Form into c
-            # c = np.concatenate(
-            #     (np.zeros(2), mJacob.reshape(self.arm_dof - 2), np.zeros(6))
-            # )
-            
             # Linear component of objective function: the manipulability Jacobian
-        
-            # print(f"jacobm: {-self.panda_arm.jacobm(start=self.panda_arm.links[4]).reshape((self.arm_dof))}")
-            # print(f"jacobm before reshape: {-self.panda_arm.jacobm(start=self.panda_arm.links[4])}")
             c = np.concatenate(
                 (np.zeros(2), -self.panda_arm.jacobm(q=arm_joints).reshape((self.arm_dof)), np.zeros(6))
             )
             
             # Get base to face end-effector
-            kε = 0.5
-            # b2e_T = arm_utilities.fkine(self.S, self.M, self.arm_dof, self.arm_joint_states)
+            kε = 0.3
             b2e_T = self.panda_arm.fkine(q=arm_joints).A
-            # print(f"b2e_t {b2e_T}")
             θε = np.arctan2(b2e_T[1, -1], b2e_T[0, -1])
             ε = kε * θε
             c[0] = -ε
@@ -258,7 +230,6 @@ class holistic_control():
 
             # The lower and upper bounds on the joint velocity and slack variable
             lb = -np.r_[np.array(([2,0.5])), np.asarray(self.qd_Limits), 10 * np.ones(6)]
-            # print(f"lb: {lb}")
             ub = np.r_[np.array(([2,0.5])), np.asarray(self.qd_Limits), 10 * np.ones(6)]
 
             errorT = np.linalg.inv(w2e_T) @ goalT
@@ -334,8 +305,8 @@ class holistic_control():
 
 if __name__ == "__main__":
     
-    goalT = np.array(([-1, 0, 0, 0],
-                      [0, 1, 0, 2.3],
+    goalT = np.array(([-1, 0, 0, 2.3],
+                      [0, 1, 0, 0],
                       [0, 0, -1, 1.45],
                       [0, 0, 0, 1]))
 
