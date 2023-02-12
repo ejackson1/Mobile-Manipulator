@@ -326,7 +326,7 @@ class Panda_Modified(ERobot):
         l_b = Link(ET.tz(0.284248) ,name="base_link", parent=None) # raise
         l_3 = Link(ET.Rz(), name="base_linkθ", parent=l_b)
         l_2 = Link(ET.tx(), name="base_linkδ", parent=l_3, qlim=[-99999,99999])
-        l_1 = Link(ET.tx(0.181673) * ET.tz(1-0.187907), name="base2arm", parent=l_2) # subtracted value in ET.tz is expirementally found from sim value - fkine.A
+        l_1 = Link(ET.tx(0.117535817) * ET.tz(1-0.187907), name="base2arm", parent=l_2) # subtracted value in ET.tz is expirementally found from sim value - fkine.A
 
 
         l0 = Link(ET.tz(0.333) * ET.Rz(), name="link0", parent=l_1)
@@ -354,7 +354,9 @@ class Panda_Modified(ERobot):
         ee = Link(ET.tz(tool_offset) * ET.Rz(-np.pi / 4), name="ee", parent=l6)
 
         elinks = [l_b, l_3, l_2, l_1, l0, l1, l2, l3, l4, l5, l6, ee]
-
+        self.qdlim = np.array(
+            [0.5, 0.5, 2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100, 3.0, 3.0]
+        )
         super(Panda_Modified, self).__init__(elinks, name="Panda Modified", manufacturer="WPI & Franka Emika")
 
         # self.qr = np.array([0, -0.3, 0, -2.2, 0, 2.0, np.pi / 4])

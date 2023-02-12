@@ -114,7 +114,7 @@ class Follower(object):
                
             
                 self.rot_counter += self.z_rot_diff
-                print(f"rot_counter {self.rot_counter}")
+                # print(f"rot_counter {self.rot_counter}")
 
 
                 ## TODO Work on fixing the drift

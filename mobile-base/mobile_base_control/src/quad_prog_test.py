@@ -163,8 +163,9 @@ class holistic_control():
 
             ### GET world to end effector transformation ###
             try: 
-                root_joint_name = "panda_link8"
+                root_joint_name = "panda_hand"
                 position, quaternion = self.tf.lookupTransform("world", root_joint_name, rospy.Time())      
+                if position == [0.0,0.0,0.0]: return
                 r = R.from_quat(quaternion)
                 w2e_T = np.hstack((r.as_matrix(), np.asarray(position).reshape((3,1))))
                 w2e_T = np.vstack((w2e_T, np.array(([0,0,0,1]))))   
@@ -178,6 +179,10 @@ class holistic_control():
                 print(e)
                 return #just retry instantly
             
+
+            # reframe arm joints to be 0,2pi
+            # arm_joints = np.where(self.arm_joint_states < 0, self.arm_joint_states + 2*np.pi, self.arm_joint_states)
+
             # Grab Manipulator Jacobian in EE frame
             arm_joints = self.arm_joint_states
             base_joints = self.base_joint_states
@@ -197,8 +202,8 @@ class holistic_control():
             Aeq = np.c_[mJacob, np.eye(6)]
             
             # fkine = self.panda_base_arm.fkine(q_h)
-            # # print(f"fkine.A {fkine.A}")
-            # # return
+            # print(f"fkine.A {fkine.A}")
+            # return
             v, _ = rtb.p_servo(w2e_T, goalT, 1.5)
             v[3:] *= 1.3 # rotate faster?
             
@@ -221,7 +226,7 @@ class holistic_control():
             )
             
             # Get base to face end-effector
-            kε = 0.3
+            kε = 0.5
             b2e_T = self.panda_arm.fkine(q=arm_joints).A
             θε = np.arctan2(b2e_T[1, -1], b2e_T[0, -1])
             ε = kε * θε
@@ -229,8 +234,8 @@ class holistic_control():
 
 
             # The lower and upper bounds on the joint velocity and slack variable
-            lb = -np.r_[np.array(([2,0.5])), np.asarray(self.qd_Limits), 10 * np.ones(6)]
-            ub = np.r_[np.array(([2,0.5])), np.asarray(self.qd_Limits), 10 * np.ones(6)]
+            lb = -np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
+            ub = np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
 
             errorT = np.linalg.inv(w2e_T) @ goalT
             # print(f"eTep: {errorT}")
@@ -267,8 +272,11 @@ class holistic_control():
             # Turn Virtual Joints into motion
             qd_bθ = qd[0]
             qd_bδ = qd[1]
-            w_l = (qd_bδ - self.W * qd_bθ)/self.R
-            w_r = (qd_bθ * self.W)/self.R + w_l
+            # w_l = (qd_bδ - self.W * qd_bθ)/self.R
+            # w_r = (qd_bθ * self.W)/self.R + w_l
+            
+            w_l = (-qd_bθ*(self.lx + self.ly) + qd_bδ) / self.R
+            w_r = (2*qd_bδ/self.R) - w_l
 
             (Vx_base, Vy_base, W_z_base) = arm_utilities.mecanum_FK(w_l, w_r, w_l, w_r, self.R, self.lx, self.ly)
 
@@ -292,7 +300,8 @@ class holistic_control():
             self.Vy_world.publish(worldV_XY[1])
             self.W_z_world.publish(W_z_base)
 
-            print(f"{W_z_base} {qd_bθ} {W_z_base-qd_bθ}")
+            # print(f"{W_z_base} {qd_bθ} {W_z_base-qd_bθ}")
+            print(f"Error: {spatial_error}")
         
         self.sendArmVels([0,0,0,0,0,0,0])
         self.Vx_world.publish(0)
@@ -305,9 +314,9 @@ class holistic_control():
 
 if __name__ == "__main__":
     
-    goalT = np.array(([-1, 0, 0, 2.3],
-                      [0, 1, 0, 0],
-                      [0, 0, -1, 1.45],
+    goalT = np.array(([1, 0, 0, 2],
+                      [0, -1, 0, 0],
+                      [0, 0, -1, 1.3],
                       [0, 0, 0, 1]))
 
     holistic = holistic_control(goalT=goalT)
