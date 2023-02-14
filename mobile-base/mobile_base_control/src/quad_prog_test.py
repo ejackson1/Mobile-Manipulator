@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 
-import rospy
-from sensor_msgs.msg import JointState
+# Math Imports
 import numpy as np
 from qpsolvers import solve_qp
+from scipy.spatial.transform import Rotation as R
+
+# ROS Imports
+import rospy
+import rospkg
+from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64MultiArray, MultiArrayLayout, Float64, Bool
+from geometry_msgs.msg import Pose
+from visualization_msgs.msg import Marker
+from tf import TransformListener
+from tf.transformations import euler_from_quaternion
+from gazebo_msgs.srv import SpawnModel
+
+# Robotic Toolbox imports 
+import roboticstoolbox as rtb
+
+# Stack Packages Imports
 from arm_utilities import arm_utilities
 from panda_description import Panda_Modified as panda
-import roboticstoolbox as rtb
-from tf import TransformListener
-from scipy.spatial.transform import Rotation as R
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from std_msgs.msg import Float64MultiArray, MultiArrayLayout
-from std_msgs.msg import Float64
-from tf.transformations import euler_from_quaternion
 
-from visualization_msgs.msg import Marker
+
 
 class holistic_control():
 
@@ -28,7 +37,7 @@ class holistic_control():
             self.qd_Limits.append(rospy.get_param("/robot_description_planning/joint_limits/panda_joint{i}/max_velocity".format(i=i+1)))
         
         arm_joints_txt = "{arm}/joint_states"
-        arm_trajectory_txt = "{arm}/gazebo_ros_control/command"
+        arm_vel_txt = "{arm}/gazebo_ros_control/command"
         self.panda_base_arm = panda()
         print(f"self.panda_base_arm: {self.panda_base_arm}")
         self.R = 0.1524 # wheel radius [m]
@@ -44,17 +53,27 @@ class holistic_control():
         rospy.Subscriber(arm_joints_txt.format(arm = self.arm), JointState, self.armCallback, queue_size=10)
         rospy.Subscriber("/base/joint_states", JointState, self.baseCallback, queue_size=10)
 
-        # Hookup Base Velocities
+        ### Publishers ###
+        ## Velocity Publishers ##
+        # Arm Velocity Publisher
+        self.armQdPublisher = rospy.Publisher(arm_vel_txt.format(arm=self.arm), Float64MultiArray, queue_size=10)
+
+        # Base Velocity Publishers
         base_controller_str = "/base/base_{0}_joint_controller/command"
         self.Vx_world = rospy.Publisher(base_controller_str.format('x'), Float64, queue_size=10)
         self.Vy_world = rospy.Publisher(base_controller_str.format('y'), Float64, queue_size=10)
         self.W_z_world = rospy.Publisher("/base/base_z_rotation_controller/command", Float64, queue_size=10)
+        
+        # RVIZ Publisher
+        markPub = rospy.Publisher("/RVIZ_goal", Marker, queue_size=2)
 
-        # Publishers
-        # self.traj_client = rospy.Publisher(arm_trajectory_txt.format(arm=self.arm), JointTrajectory, queue_size=10)
+        # Manipulability Metric Publisher
+        self.manipPub = rospy.Publisher("{arm}/manipulability".format(arm=self.arm), Float64, queue_size=1)
 
-        self.armQdPublisher = rospy.Publisher(arm_trajectory_txt.format(arm=self.arm), Float64MultiArray, queue_size=10)
-
+        # Set Goal Reached Param
+        self.reached_goal = Bool()
+        self.reached_goal.data = False
+        rospy.set_param('/goal_reached', self.reached_goal.data)
 
         self.arm_joint_names = [f"{self.arm}_joint1",
                                 f"{self.arm}_joint2",
@@ -71,11 +90,10 @@ class holistic_control():
         mark.ns = "panda"
         mark.id = 0 #arrow
         mark.type = 0
-        # mark.action = Marker().ADD
+        mark.action = Marker().ADD
         mark.pose.position.x = goalT[0,-1]
         mark.pose.position.y = goalT[1,-1]
         mark.pose.position.z = goalT[2,-1]
-        print(goalT[:3,:3])
         r = R.from_matrix(goalT[:3,:3]) # rotation matrix
         (x, y, z, w) = r.as_quat()
         mark.pose.orientation.x = x
@@ -90,10 +108,31 @@ class holistic_control():
         mark.scale.y= .1
         mark.scale.z= .1
         mark.lifetime.secs = 0 # FOREVER
-        print(mark)
-        markPub = rospy.Publisher("/visualization_marker", Marker, queue_size=2)
+        
         rospy.sleep(0.5)
         markPub.publish(mark)
+
+        # Spawn object goal into Gazebo for debugging
+        # STL from https://www.thingiverse.com/thing:1983449
+        # TODO Make this a condition
+        spawm_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
+        goalPose = Pose()
+        goalPose.position.x = goalT[0,-1]
+        goalPose.position.y = goalT[1,-1]
+        goalPose.position.z = goalT[2,-1]
+        goalPose.orientation.x = x
+        goalPose.orientation.y = y
+        goalPose.orientation.z = z
+        goalPose.orientation.w = w
+        rospack = rospkg.RosPack()
+        spawm_model_client(
+            model_name='goal_CS',
+            model_xml=open(rospack.get_path('mobile_base_control') + '/urdf/right_hand_system_assembled.xml').read(),
+            robot_namespace='/panda',
+            initial_pose=goalPose,
+            reference_frame='world'
+        )
+
         
 
         self.tf = TransformListener()
@@ -102,7 +141,6 @@ class holistic_control():
         rospy.sleep(0.5)
         
     def armCallback(self, msg):
-        # print(f"msg: {msg}")
         self.arm_joint_states = np.array(([msg.position[2],
                                            msg.position[3],
                                            msg.position[4],
@@ -121,24 +159,6 @@ class holistic_control():
         
         return
 
-    def sendArmVels_Trajectories(self, vel):
-        """
-        Sends joint velocities to the robot arm
-        Vel [list] - List of velocities [q1, q2, q3, ..., qn]
-        """ # not functional anymore
-        print(f"vels: {vel}")
-        print(f"length of vel: {len(vel)}")
-        arm_trajectory = JointTrajectory()
-        arm_trajectory.joint_names = self.arm_joint_names
-        arm_trajectory.points.append(JointTrajectoryPoint())
-        arm_trajectory.points[0].positions = list(self.arm_joint_names) 
-        arm_trajectory.points[0].velocities = vel
-        arm_trajectory.points[0].accelerations = [0,0,0,0,0,0,0] 
-        arm_trajectory.points[0].time_from_start = rospy.Duration(0.01)
-        self.traj_client.publish(arm_trajectory)
-        
-        pass    
-    
 
     def sendArmVels(self, vel):
         """
@@ -154,7 +174,6 @@ class holistic_control():
         self.armQdPublisher.publish(arm_qd)
 
         
-
 
     def main_loop(self, goalT):
 
@@ -178,10 +197,6 @@ class holistic_control():
             except Exception as e:
                 print(e)
                 return #just retry instantly
-            
-
-            # reframe arm joints to be 0,2pi
-            # arm_joints = np.where(self.arm_joint_states < 0, self.arm_joint_states + 2*np.pi, self.arm_joint_states)
 
             # Grab Manipulator Jacobian in EE frame
             arm_joints = self.arm_joint_states
@@ -204,8 +219,11 @@ class holistic_control():
             # fkine = self.panda_base_arm.fkine(q_h)
             # print(f"fkine.A {fkine.A}")
             # return
-            v, _ = rtb.p_servo(w2e_T, goalT, 1.5)
-            v[3:] *= 1.3 # rotate faster?
+            errorT = np.linalg.inv(w2e_T) @ goalT
+            spatial_error = np.sum(np.abs(errorT[:3, -1]))
+            
+            v, _ = rtb.p_servo(w2e_T, goalT, 0.35)
+            v[3:] *= 1.3 # rotate faster
             
             beq = v.reshape((6,))
 
@@ -237,10 +255,7 @@ class holistic_control():
             lb = -np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
             ub = np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
 
-            errorT = np.linalg.inv(w2e_T) @ goalT
-            # print(f"eTep: {errorT}")
-            spatial_error = np.sum(np.abs(errorT[:3, -1]))
-            # print(f"Spatial Error: {spatial_error}")
+
             Q = np.eye(self.arm_dof + 2 + 6 )
             k_a = 0.01
             Q[: self.arm_dof+2, : self.arm_dof+2] *= k_a # apply k_a to arm joints in Q
@@ -248,32 +263,17 @@ class holistic_control():
 
             # Slack Q
             Q[self.arm_dof+2 :, self.arm_dof+2 :] = (1.0 / spatial_error) * np.eye(6)
-            
-            # print(f"Q: {Q}")
-            # print(f"c: {c.shape}")
-            # print(f"lb {lb.shape}")
-            # print(f"ub: {ub.shape}")
-            # print(f"Aeq: {Aeq.shape}")
-            # print(f"Beq: {beq.shape}")
+
+            # Solve QP for q_dot and slack variable
             qd = solve_qp(Q, c, Ain, bin, Aeq, beq, lb=lb, ub=ub, solver='cvxopt')
-            # qd = qd[: self.arm_dof+2]
-            # print(f"qd: {qd}")
 
-
-            # Send motion to arm joints
-            arm_qd = [qd[2], qd[3], qd[4], qd[5], qd[6], qd[7], qd[8]]
-            #self.sendArmVels_trajectories(vels)
-            self.sendArmVels(arm_qd)
 
             # Send motion to base
-            # mecanum_FK(self, w_fl, w_fr, w_rl, w_rr, r, lx, ly))
             
             # Transform Qd into sent joint commands
             # Turn Virtual Joints into motion
             qd_bθ = qd[0]
             qd_bδ = qd[1]
-            # w_l = (qd_bδ - self.W * qd_bθ)/self.R
-            # w_r = (qd_bθ * self.W)/self.R + w_l
             
             w_l = (-qd_bθ*(self.lx + self.ly) + qd_bδ) / self.R
             w_r = (2*qd_bδ/self.R) - w_l
@@ -282,7 +282,6 @@ class holistic_control():
 
             euler = euler_from_quaternion(w2b_orient) # translate to euler
             curr_val = euler[2] # z rotation
-            # print(f"Euler Angles: {curr_val}")
 
             if curr_val < 0:
                 curr_val = curr_val + 2*np.pi # maps from 0-2pi now
@@ -300,13 +299,28 @@ class holistic_control():
             self.Vy_world.publish(worldV_XY[1])
             self.W_z_world.publish(W_z_base)
 
+            # Send motion to arm joint
+            arm_qd = [qd[2], qd[3], qd[4], qd[5], qd[6], qd[7], qd[8]]
+            self.sendArmVels(arm_qd)
+
             # print(f"{W_z_base} {qd_bθ} {W_z_base-qd_bθ}")
             print(f"Error: {spatial_error}")
-        
+
+            # Publish manipulabulity metric (Yoshikawa)
+            # Use this to record data and evaluate performance
+            m = self.panda_arm.manipulability(q=arm_joints)
+            self.manipPub.publish(m)
+
+            
+        # Stop moving! 
         self.sendArmVels([0,0,0,0,0,0,0])
         self.Vx_world.publish(0)
         self.Vy_world.publish(0)
         self.W_z_world.publish(0)
+
+        # Update reached goal param
+        self.reached_goal.data = True
+        rospy.set_param('/goal_reached', self.reached_goal.data)
         
         
 
@@ -314,9 +328,10 @@ class holistic_control():
 
 if __name__ == "__main__":
     
-    goalT = np.array(([1, 0, 0, 2],
-                      [0, -1, 0, 0],
-                      [0, 0, -1, 1.3],
+    ## Set homogenmous Transformation Matrix as goal coordinate system wrt to world coordinate system
+    goalT = np.array(([1, 0, 0, 2.3],
+                      [0, -1, 0, 0.3],
+                      [0, 0, -1, 1.45],
                       [0, 0, 0, 1]))
 
     holistic = holistic_control(goalT=goalT)

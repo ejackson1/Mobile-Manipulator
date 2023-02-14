@@ -51,8 +51,6 @@
           gazebo_ros_control
           panda_finger1_controller
           panda_finger2_controller
-
-
           panda_x_joint_controller
           panda_y_joint_controller
           panda_z_joint_controller
@@ -73,15 +71,15 @@
     <!-- Spawn panda_insert robot -->
   <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model"
     args="-param robot_description -urdf -model robot
-
-    " output="screen" />
-    <!-- -J panda_joint1 0
+    -J panda_joint1 0
     -J panda_joint2 -0.3
     -J panda_joint3 0
     -J panda_joint4 -2.2
     -J panda_joint5 0
     -J panda_joint6 2
-    -J panda_joint7 0.78539816 -->
+    -J panda_joint7 0.78539816
+    " output="screen" />
+
   <!-- Launch moveit -->
   <include file="$(find panda_moveit_config)/launch/move_group.launch" pass_all_args="true">
     <remap from="joint_states" to="panda/joint_states" />
