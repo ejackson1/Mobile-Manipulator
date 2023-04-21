@@ -91,6 +91,7 @@
     </transmission>
   </xacro:macro>
 
+
   <xacro:prismatic_joint_macro axis_name="x" xyz="1 0 0" parent="world" child="base_x_link"/>
   <xacro:prismatic_joint_macro axis_name="y" xyz="0 1 0" parent="base_x_link" child="base_y_link"/>
   <xacro:prismatic_joint_macro axis_name="z" xyz="0 0 1" parent="base_y_link" child="base_z_link"/>
@@ -113,5 +114,13 @@
         <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
+
+  <!-- <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/base</robotNamespace>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin>
+  </gazebo> -->
+
 
 </robot>

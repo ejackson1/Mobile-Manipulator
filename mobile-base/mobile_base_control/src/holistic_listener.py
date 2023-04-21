@@ -21,10 +21,16 @@ class holistic_listener():
 
         self.mList = []
         self.mListTime = []
+        self.mbList = []
+        self.mbListTime = []
+        self.mModList = []
+        self.mModListTime = []
 
         ## Subscribers
         rospy.Subscriber(arm_vel_txt.format(arm=self.arm), Float64MultiArray, self.armVelCallback, queue_size=10)
         rospy.Subscriber("{arm}/manipulability".format(arm=self.arm), Float64, self.armManipCallback, queue_size=10)
+        rospy.Subscriber("{arm}_base/manipulability".format(arm=self.arm), Float64, self.armBaseManipCallback, queue_size=10)
+        rospy.Subscriber("{arm}/modJacManipulabilitity".format(arm=self.arm), Float64, self.armModManipCallback, queue_size=10)
 
 
     def armVelCallback(self, msg):
@@ -54,22 +60,75 @@ class holistic_listener():
         self.mList.append(self.m)
         self.mListTime.append(self.mTime)
 
+    def armModManipCallback(self, msg):
+        """
+        Callback function recieving the manipulability measure of the arm. Saves data into a plot
+        """
+
+        self.mMod = msg.data
+        self.mModTime = rospy.get_rostime()
+        self.mModTime = self.mModTime.to_sec()
+        # print(f"Manip {self.m}")
+        # print(f"time {self.mTime}")
+        # Append to List for later plotting
+        self.mModList.append(self.mMod)
+        self.mModListTime.append(self.mModTime)
+    
+    def armBaseManipCallback(self, msg):
+        """
+        Callback function recieving the manipulability measure of the arm & base. Saves data into a plot
+        """
+
+        self.mb = msg.data
+        self.mbTime = rospy.get_rostime()
+        self.mbTime = self.mbTime.to_sec()
+        # print(f"Manip {self.m}")
+        # print(f"time {self.mTime}")
+        # Append to List for later plotting
+        self.mbList.append(self.mb)
+        self.mbListTime.append(self.mbTime)
+
 
     def plotData(self):
-        while 1:
-            goalReached = rospy.get_param('/goal_reached')
-            if goalReached == True:
-                figure, (ax1, ax2) = plt.subplots(2, 1)
-                # axis[0,0].plot(self.velListTime, self.velList)
-                # axis[0,0].set_title("Velocity Over Time")
-                ax1.plot(self.mListTime, self.mList)
-                ax1.set_title('Manipulability OverTime')
-                ax1.set_ylabel('Yoshikawa Index')
-                ax1.set_xlabel('Time (s)')
+        k = "1"
+        try:
+            while 1:
+                goalReached = rospy.get_param('/goal_reached')
+                if goalReached == True:
+                    figure, (ax1, ax2) = plt.subplots(2, 1)
+                    # figure(figsize=((6,10)))
+
+                    figure.set_figwidth(8)
+                    figure.set_figheight(18)
+                    
+                    # Reinitalize times so they're not sim times
+                    self.mListTime = np.asarray(self.mListTime)
+                    self.mbListTime = np.asarray(self.mbListTime)
+                    # self.mModListTime = np.asarray(self.mModListTime)
+
+                    self.mListTime -= self.mListTime[0]
+                    self.mbListTime -= self.mbListTime[0]
+                    # self.mModListTime -= self.mModListTime[0]
+
+                    ax1.plot(self.mListTime, self.mList)
+                    ax1.set_title('Manipulability (Arm), k={k}'.format(k=k))
+                    ax1.set_ylabel('Yoshikawa Index')
+                    ax1.set_xlabel('Time (s)')
+
+                    ax2.plot(self.mbListTime, self.mbList)
+                    ax2.set_title('Manipulability (Base+Arm), k={k}'.format(k=k))
+                    ax2.set_ylabel('Yoshikawa Index')
+                    ax2.set_xlabel('Time (s)')
+
+                    # ax3.plot(self.mModListTime, self.mModList)
+                    # ax3.set_title('Modified Jacobian Manipulability (Base+Arm), k={k}'.format(k=k))
+                    # ax3.set_ylabel('Yoshikawa Index')
+                    # ax3.set_xlabel('Time (s)')
 
 
-
-                plt.show()
+                    plt.show()
+        except KeyboardInterrupt:
+            pass
         pass
 
 

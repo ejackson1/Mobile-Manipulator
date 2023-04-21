@@ -31,7 +31,7 @@ class Follower(object):
         self.arm_controllers.append(rospy.Publisher(arm_controller_str.format('y'), Float64, queue_size=10))
         self.arm_controllers.append(rospy.Publisher(arm_controller_str.format('z'), Float64, queue_size=10))
         self.arm_controllers.append(rospy.Publisher("/" + arm_namespace + "/" + arm_name + "_z_rotation_controller/command", Float64, queue_size=10))
-
+        
         rospy.Subscriber("tf/", TFMessage, self.callback)
 
         rospy.spin()
@@ -106,10 +106,10 @@ class Follower(object):
                     else: # moving CW
                         self.z_rot_diff = -(abs(euler[2])- abs(self.z_rot_prev))
                 
-                else:
-                    print("Weird edge case ran")
-                    print(f"Quadrants: {quadrantCurrent, quadrantPrev}")
-                    print(f"Angles: {euler[2], self.z_rot_prev}")
+                # else:
+                #     print("Weird edge case ran")
+                #     print(f"Quadrants: {quadrantCurrent, quadrantPrev}")
+                #     print(f"Angles: {euler[2], self.z_rot_prev}")
 
                
             
@@ -121,19 +121,12 @@ class Follower(object):
                 ## Fix drift 
 
                 # Send positions!
-                
-
                 curr_val = (position[0], position[1], euler[2]) # x, y pos and z rotation
-                # print(curr_val)
-
-                # print(f"euler: {euler}")
                 self.arm_controllers[0].publish(curr_val[0]) # x 
                 self.arm_controllers[1].publish(curr_val[1]) # y
                 self.arm_controllers[3].publish(self.rot_counter) # z_rot
                 self.z_rot_prev = euler[2]
-                # self.arm_controllers[2].publish(1)
-                
-                # self.prev_value = curr_val
+
         except Exception as e:
             print(e)
             pass

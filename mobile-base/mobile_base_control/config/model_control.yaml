@@ -4,6 +4,21 @@ base:
     type: joint_state_controller/JointStateController
     publish_rate: 50  
   
+
+  # gazebo_ros_control:
+  #   type: effort_controllers/JointVelocityController
+  #   joints:
+  #       - base_x_joint
+  #       - base_y_joint
+  #       - base_z_joint
+  #       - base_z_rotation_joint
+    
+  #   gains:
+  #       base_x_joint: { p: 100, d: 10, i: 0.01}
+  #       base_y_joint: { p: 100, d: 10, i: 0.01 }
+  #       base_z_joint: { p: 100, d: 10, i: 0.01 }
+  #       base_z_rotation_joint: { p: 100, d: 10, i: 0.01}
+
   # World velocity controllers
   base_x_joint_controller:
     type: effort_controllers/JointVelocityController

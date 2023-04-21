@@ -54,7 +54,9 @@
           panda_x_joint_controller
           panda_y_joint_controller
           panda_z_joint_controller
-          panda_z_rotation_controller"  
+          panda_z_rotation_controller
+          panda_rx_joint_controller
+          panda_ry_joint_controller"  
           ns="/panda" />
 
 

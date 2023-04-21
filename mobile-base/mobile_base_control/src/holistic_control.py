@@ -5,6 +5,9 @@ import numpy as np
 from qpsolvers import solve_qp
 from scipy.spatial.transform import Rotation as R
 
+# Misc Imports
+import copy
+
 # ROS Imports
 import rospy
 import rospkg
@@ -22,6 +25,7 @@ import roboticstoolbox as rtb
 # Stack Packages Imports
 from arm_utilities import arm_utilities
 from panda_description import Panda_Modified as panda
+from holistic_listener import holistic_listener as listener
 
 
 
@@ -44,6 +48,7 @@ class holistic_control():
         self.W = 0.56848 # distance between the two wheels [m]
         self.lx = self.W/2 # represent the distance from the robot's center to the wheels projected on the x and y axis
         self.ly = 0.3617629 # represent the distance from the robot's center to the wheels projected on the x and y axis
+        self.w2l0_init = 1.0
 
 
         self.panda_arm = rtb.models.ETS.Panda() # instantiate arm from rtb
@@ -64,11 +69,19 @@ class holistic_control():
         self.Vy_world = rospy.Publisher(base_controller_str.format('y'), Float64, queue_size=10)
         self.W_z_world = rospy.Publisher("/base/base_z_rotation_controller/command", Float64, queue_size=10)
         
+        # Elevator Velocity Publishers
+        self.Vz_world = rospy.Publisher("{arm}/panda_z_joint_controller/command".format(arm=self.arm), Float64, queue_size=10)
+        self.rx_elev =  rospy.Publisher("{arm}/panda_rx_joint_controller/command".format(arm=self.arm), Float64, queue_size=10)
+        self.ry_elev =  rospy.Publisher("{arm}/panda_ry_joint_controller/command".format(arm=self.arm), Float64, queue_size=10)
+
+
         # RVIZ Publisher
         markPub = rospy.Publisher("/RVIZ_goal", Marker, queue_size=2)
 
         # Manipulability Metric Publisher
         self.manipPub = rospy.Publisher("{arm}/manipulability".format(arm=self.arm), Float64, queue_size=1)
+        self.manipBasePub = rospy.Publisher("{arm}_base/manipulability".format(arm=self.arm), Float64, queue_size=1)
+        self.modJacPub = rospy.Publisher("{arm}/modJacManipulabilitity".format(arm=self.arm), Float64, queue_size=1)
 
         # Set Goal Reached Param
         self.reached_goal = Bool()
@@ -141,7 +154,9 @@ class holistic_control():
         rospy.sleep(0.5)
         
     def armCallback(self, msg):
-        self.arm_joint_states = np.array(([msg.position[2],
+        self.arm_joint_states = np.array(([msg.position[9],
+                                           msg.position[10], 
+                                           msg.position[2],
                                            msg.position[3],
                                            msg.position[4],
                                            msg.position[5],
@@ -173,9 +188,18 @@ class holistic_control():
 
         self.armQdPublisher.publish(arm_qd)
 
-        
+    def yoshikawa(self, J):
+        m2 = np.linalg.det(J @ J.T)
+        return np.sqrt(abs(m2))        
 
     def main_loop(self, goalT):
+        
+        base_dofs = 2
+        elev_dof_z = 1
+        elev_dof_rxy = 2 
+
+
+
 
         spatial_error = 1 # init
         while spatial_error >= 0.005:
@@ -193,6 +217,11 @@ class holistic_control():
                 # Get current angle of base
                 root_joint_name = "base_footprint"
                 w2b_pose, w2b_orient = self.tf.lookupTransform("world", root_joint_name, rospy.Time()) 
+                
+                # Find Elevator Position
+                root_joint_name = "panda_link0"
+                w2l0_pose, w2l0_orient = self.tf.lookupTransform("world", root_joint_name, rospy.Time()) 
+
 
             except Exception as e:
                 print(e)
@@ -202,78 +231,134 @@ class holistic_control():
             arm_joints = self.arm_joint_states
             base_joints = self.base_joint_states
             base_xy = base_joints[:2]
+            q_bε = w2l0_pose[-1] - self.w2l0_init
+            # print(f"w2lo_pose {q_bε}")
+            armJointsElev = np.hstack((np.array([0,0,q_bε]), arm_joints))
 
-            q_h = np.hstack((np.array([0, 0]), arm_joints))
-            self.panda_base_arm.q = q_h # force update
+            # q_h = np.hstack((np.array([0, 0, 0]), arm_joints))
+            self.panda_base_arm.q = armJointsElev # force update
+            # self.panda_base_arm.q = q_h # force update
 
             # Test plot accuracy
-            # print(f"q_h: {q_h}")
-            # self.panda_base_arm.plot(q_h)
+            # print(f"q_h: {armJointsElev}")
+            # self.panda_base_arm.plot(armJointsElev)
             # rospy.sleep(10000)
 
-            
-            mJacob = self.panda_base_arm.jacobe(q_h)
-            # Make Equality Constraints
-            Aeq = np.c_[mJacob, np.eye(6)]
-            
-            # fkine = self.panda_base_arm.fkine(q_h)
-            # print(f"fkine.A {fkine.A}")
-            # return
+
             errorT = np.linalg.inv(w2e_T) @ goalT
+            errorZdim = errorT[2,-1]
             spatial_error = np.sum(np.abs(errorT[:3, -1]))
             
-            v, _ = rtb.p_servo(w2e_T, goalT, 0.35)
+            v, _ = rtb.p_servo(w2e_T, goalT, 1.0)
             v[3:] *= 1.3 # rotate faster
-            
+
+
+
+
+            eJacob = self.panda_base_arm.jacobe(armJointsElev)
+            # Make Equality Constraints
+            Aeq = np.c_[eJacob, np.eye(6)]  
             beq = v.reshape((6,))
 
             ## The Inequality Constraints for joint limit avoidance ##
-            Ain = np.zeros((self.arm_dof+2 + 6, self.arm_dof+2 + 6))
-            bin = np.zeros(self.arm_dof+2 + 6)
+            Ain = np.zeros((self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6, self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6))
+            bin = np.zeros(self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6)
 
-            ps = 0.2
-
-            pi = 0.9
-
+            
             # Form the joint limit velocity damper
+            # We treat the elevator joints differently than the arm joints
+            # Elevator limits
+            ps_elev = 0.05 # m or radians as a hardstop end point from limit
+            pi_elev = 0.25 # m or radians to start the damper from limit
+
+            # Limits of entire system from panda_description
             qlim_h = self.panda_base_arm.qlim
-            Ain[: self.arm_dof+2, : self.arm_dof+2], bin[: self.arm_dof+2] = arm_utilities.joint_velocity_damper(ps, pi, n=self.arm_dof+2, q=q_h, qlim=qlim_h)
+            # Ain[: elev_dof_z+base_dofs, : elev_dof_z+base_dofs], bin[: elev_dof_z+base_dofs]
+            Ain = np.zeros((self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6, self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6))
+            bin = np.zeros((self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6))
+            Ain_elev, bin_elev = arm_utilities.joint_velocity_damper(ps_elev, pi_elev, n=elev_dof_z+base_dofs, q=armJointsElev[:3], qlim=qlim_h)
+
+            Ain[:elev_dof_z+base_dofs, :elev_dof_z+base_dofs] = Ain_elev
+            bin[:elev_dof_z+base_dofs] = bin_elev
+
+            # Panda Arm Limits
+            ps_arm = 0.1
+            pi_arm = 0.9
+
+            # print(f"armJointsElev {armJointsElev[2:]}")
+            # print(f"qlim_h: {qlim_h}")
+            # print(f"qlim_h.shape: {qlim_h.shape}")
+            # print(f"qlim_h {qlim_h[:,3:]}")
+            Ain_arm, bin_arm = arm_utilities.joint_velocity_damper(ps_arm, pi_arm, n=self.arm_dof+elev_dof_rxy, q=armJointsElev[2:], qlim=qlim_h[:,3:])
+
+            Ain[elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = Ain_arm
+            bin[elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = bin_arm
+            # print(f"bin_arm: {bin_arm}")
+            # print(f"Ain: {Ain}")
+            # return
+            
+            # Ain[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, : self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], bin[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = arm_utilities.joint_velocity_damper(ps=0.1, pi=0.9, n=self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, q=armJointsElev, qlim=qlim_h)
+            
+            
             # Linear component of objective function: the manipulability Jacobian
+
+            # pandaBaseArmJacobM = -self.panda_arm.jacobm(q=arm_joints)
+
+            # # Weight manipulability Jacobian so prismatic joint has less effect
+            # k = 10
+            pandaBaseJacobianOG = self.panda_base_arm.jacobe(q=armJointsElev, start=self.panda_base_arm.links[5])
+            pandaBaseElevM = -self.panda_base_arm.jacobm(q=armJointsElev, start=self.panda_base_arm.links[5])
+            # # # print(f"modJacobian: {pandaBaseJacobian}")
+            # # pandaBaseJacobianOG = copy.deepcopy(pandaBaseJacobian)
+
+            # pandaBaseArmJacobM[0,0] = pandaBaseArmJacobM[0,0]*k # only multiplying the first element by scalar
+            # # pandaBaseArmJacobM = -self.panda_base_arm.jacobm(J=pandaBaseJacobian, start=self.panda_base_arm.links[4])
+
+
             c = np.concatenate(
-                (np.zeros(2), -self.panda_arm.jacobm(q=arm_joints).reshape((self.arm_dof)), np.zeros(6))
-            )
+                (np.zeros(base_dofs+elev_dof_z), pandaBaseElevM.reshape((self.arm_dof+elev_dof_rxy)), np.zeros(6))
+            )   
             
             # Get base to face end-effector
             kε = 0.5
-            b2e_T = self.panda_arm.fkine(q=arm_joints).A
+            b2e_T = self.panda_arm.fkine(q=arm_joints[2:]).A
             θε = np.arctan2(b2e_T[1, -1], b2e_T[0, -1])
             ε = kε * θε
             c[0] = -ε
 
 
             # The lower and upper bounds on the joint velocity and slack variable
-            lb = -np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
-            ub = np.r_[self.panda_base_arm.qdlim[: self.arm_dof+2], 10 * np.ones(6)]
+            lb = -np.r_[self.panda_base_arm.qdlim[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], 10 * np.ones(6)]
+            ub =  np.r_[self.panda_base_arm.qdlim[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], 10 * np.ones(6)]
 
-
-            Q = np.eye(self.arm_dof + 2 + 6 )
-            k_a = 0.01
-            Q[: self.arm_dof+2, : self.arm_dof+2] *= k_a # apply k_a to arm joints in Q
-            Q[:2, :2] *= 1.0/spatial_error
-
+            Q = np.eye(self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6 )
+            k_a = 0.5
+            Q[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, : self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] *= k_a # apply k_a to arm joints in Q
+            # Q[2:3,2:3] *= 1 # elevator has less importance, higher number = harder to move
+            Q[:base_dofs+elev_dof_z, :base_dofs+elev_dof_z] *= 1.0/spatial_error
             # Slack Q
-            Q[self.arm_dof+2 :, self.arm_dof+2 :] = (1.0 / spatial_error) * np.eye(6)
+            Q[self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs :, self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs :] = (1.0 / spatial_error) * np.eye(6)
+
 
             # Solve QP for q_dot and slack variable
+            # print(f"Ain {Ain.shape}")
+            # print(f"bin {bin.shape}")
+            # print(f"Q: {Q.shape}")
+            # print(f"Aeq: {Aeq.shape}")
+            # print(f"beq: {beq.shape}")
+            # print(f"lb {lb.shape}")
+            # print(f"ub: {ub.shape}")
+
             qd = solve_qp(Q, c, Ain, bin, Aeq, beq, lb=lb, ub=ub, solver='cvxopt')
 
-
-            # Send motion to base
-            
+            ## Send motion to base & elevator
             # Transform Qd into sent joint commands
             # Turn Virtual Joints into motion
             qd_bθ = qd[0]
             qd_bδ = qd[1]
+            qd_bε = qd[2]
+            qd_bεx = qd[3]
+            qd_bεy = qd[4]
             
             w_l = (-qd_bθ*(self.lx + self.ly) + qd_bδ) / self.R
             w_r = (2*qd_bδ/self.R) - w_l
@@ -295,28 +380,42 @@ class holistic_control():
             # Rotate Robot XY velocities to World XY Velocities 
             worldV_XY = R_z@np.array(([Vx_base, Vy_base, 0]))
 
+            # Base Publishers
             self.Vx_world.publish(worldV_XY[0])
             self.Vy_world.publish(worldV_XY[1])
             self.W_z_world.publish(W_z_base)
 
-            # Send motion to arm joint
-            arm_qd = [qd[2], qd[3], qd[4], qd[5], qd[6], qd[7], qd[8]]
+            # Elevator Publishers
+            self.Vz_world.publish(qd_bε)
+            self.rx_elev.publish(qd_bεx)
+            self.ry_elev.publish(qd_bεy)
+
+            # Arm Publisher
+            arm_qd = [qd[5], qd[6], qd[7], qd[8], qd[9], qd[10], qd[11]]
             self.sendArmVels(arm_qd)
 
-            # print(f"{W_z_base} {qd_bθ} {W_z_base-qd_bθ}")
             print(f"Error: {spatial_error}")
 
             # Publish manipulabulity metric (Yoshikawa)
             # Use this to record data and evaluate performance
-            m = self.panda_arm.manipulability(q=arm_joints)
+            m = self.panda_arm.manipulability(q=arm_joints[2:])
+            mb = self.yoshikawa(J=pandaBaseJacobianOG)
+            # mModJacobian = self.yoshikawa(J=pandaBaseJacobian)
+            # print(f"modmanip: {mModJacobian}")
+
             self.manipPub.publish(m)
+            self.manipBasePub.publish(mb)
+            # self.modJacPub.publish(mModJacobian)
 
             
         # Stop moving! 
         self.sendArmVels([0,0,0,0,0,0,0])
         self.Vx_world.publish(0)
         self.Vy_world.publish(0)
+        self.Vz_world.publish(0)
         self.W_z_world.publish(0)
+        self.rx_elev.publish(0)
+        self.ry_elev.publish(0)
 
         # Update reached goal param
         self.reached_goal.data = True
@@ -331,7 +430,7 @@ if __name__ == "__main__":
     ## Set homogenmous Transformation Matrix as goal coordinate system wrt to world coordinate system
     goalT = np.array(([1, 0, 0, 2.3],
                       [0, -1, 0, 0.3],
-                      [0, 0, -1, 1.45],
+                      [0, 0, -1, 1.75],
                       [0, 0, 0, 1]))
 
     holistic = holistic_control(goalT=goalT)

@@ -10,6 +10,7 @@
     <!-- SPAWN BASE CONTROLLERS-->
     <node name="base_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
       output="screen" ns="/base" args="joint_state_controller 
+                                      
                                       base_x_joint_controller
                                       base_y_joint_controller
                                       base_z_joint_controller     
@@ -17,7 +18,7 @@
 
                                  
     
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
     
     <!-- Spawn the base into Gazebo -->
