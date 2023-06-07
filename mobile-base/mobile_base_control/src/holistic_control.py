@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 
 # Misc Imports
 import copy
+import pickle
 
 # ROS Imports
 import rospy
@@ -50,6 +51,11 @@ class holistic_control():
         self.ly = 0.3617629 # represent the distance from the robot's center to the wheels projected on the x and y axis
         self.w2l0_init = 1.0
 
+        self.spatialErrorList = []
+        self.sETimeList = []
+
+        self.spatialErrorList.append(0)
+        self.sETimeList.append(0)
 
         self.panda_arm = rtb.models.ETS.Panda() # instantiate arm from rtb
 
@@ -196,13 +202,10 @@ class holistic_control():
         
         base_dofs = 2
         elev_dof_z = 1
-        elev_dof_rxy = 2 
-
-
-
+        elev_dof_rxy = 2
 
         spatial_error = 1 # init
-        while spatial_error >= 0.005:
+        while spatial_error >= 0.01:
 
             ### GET world to end effector transformation ###
             try: 
@@ -241,21 +244,23 @@ class holistic_control():
 
             # Test plot accuracy
             # print(f"q_h: {armJointsElev}")
-            # self.panda_base_arm.plot(armJointsElev)
+            # self.panda_base_arm.plot(armJointsElev, block=True)
             # rospy.sleep(10000)
 
 
             errorT = np.linalg.inv(w2e_T) @ goalT
             errorZdim = errorT[2,-1]
             spatial_error = np.sum(np.abs(errorT[:3, -1]))
+
+            # Append spatial error to list & record the time
+            self.spatialErrorList.append(spatial_error)
+            self.sETimeList.append(rospy.get_rostime().to_sec())
             
-            v, _ = rtb.p_servo(w2e_T, goalT, 1.0)
+            v, _ = rtb.p_servo(w2e_T, goalT, 0.75)
             v[3:] *= 1.3 # rotate faster
 
+            eJacob = self.panda_base_arm.jacobe(q=armJointsElev)
 
-
-
-            eJacob = self.panda_base_arm.jacobe(armJointsElev)
             # Make Equality Constraints
             Aeq = np.c_[eJacob, np.eye(6)]  
             beq = v.reshape((6,))
@@ -276,38 +281,33 @@ class holistic_control():
             # Ain[: elev_dof_z+base_dofs, : elev_dof_z+base_dofs], bin[: elev_dof_z+base_dofs]
             Ain = np.zeros((self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6, self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6))
             bin = np.zeros((self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs+6))
-            Ain_elev, bin_elev = arm_utilities.joint_velocity_damper(ps_elev, pi_elev, n=elev_dof_z+base_dofs, q=armJointsElev[:3], qlim=qlim_h)
+            Ain_elev, bin_elev = arm_utilities.joint_velocity_damper(ps_elev, pi_elev, n=elev_dof_z+elev_dof_rxy+base_dofs, q=armJointsElev[:5], qlim=qlim_h)
 
-            Ain[:elev_dof_z+base_dofs, :elev_dof_z+base_dofs] = Ain_elev
-            bin[:elev_dof_z+base_dofs] = bin_elev
+            Ain[:elev_dof_z+base_dofs+elev_dof_rxy, :elev_dof_z+base_dofs+elev_dof_rxy] = Ain_elev
+            bin[:elev_dof_z+base_dofs+elev_dof_rxy] = bin_elev
 
             # Panda Arm Limits
             ps_arm = 0.1
             pi_arm = 0.9
 
-            # print(f"armJointsElev {armJointsElev[2:]}")
-            # print(f"qlim_h: {qlim_h}")
-            # print(f"qlim_h.shape: {qlim_h.shape}")
-            # print(f"qlim_h {qlim_h[:,3:]}")
-            Ain_arm, bin_arm = arm_utilities.joint_velocity_damper(ps_arm, pi_arm, n=self.arm_dof+elev_dof_rxy, q=armJointsElev[2:], qlim=qlim_h[:,3:])
+            Ain_arm, bin_arm = arm_utilities.joint_velocity_damper(ps_arm, pi_arm, n=self.arm_dof, q=armJointsElev[5:], qlim=qlim_h[:,5:])
 
-            Ain[elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = Ain_arm
-            bin[elev_dof_z+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = bin_arm
-            # print(f"bin_arm: {bin_arm}")
-            # print(f"Ain: {Ain}")
-            # return
+            Ain[elev_dof_z+base_dofs+elev_dof_rxy: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, elev_dof_z+elev_dof_rxy+base_dofs: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = Ain_arm
+            bin[elev_dof_z+base_dofs+elev_dof_rxy: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = bin_arm
+
             
             # Ain[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, : self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], bin[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] = arm_utilities.joint_velocity_damper(ps=0.1, pi=0.9, n=self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, q=armJointsElev, qlim=qlim_h)
             
             
-            # Linear component of objective function: the manipulability Jacobian
-
-            # pandaBaseArmJacobM = -self.panda_arm.jacobm(q=arm_joints)
-
+            # Linear component of objective function: the manipulability Jacobian)
             # # Weight manipulability Jacobian so prismatic joint has less effect
             # k = 10
             pandaBaseJacobianOG = self.panda_base_arm.jacobe(q=armJointsElev, start=self.panda_base_arm.links[5])
+            pandaBaseArmM = -self.panda_base_arm.jacobm(q=armJointsElev, start=self.panda_base_arm.links[7])
             pandaBaseElevM = -self.panda_base_arm.jacobm(q=armJointsElev, start=self.panda_base_arm.links[5])
+            # pandaBaseElevM = -self.panda_arm.jacobm(q=arm_joints)
+            # print(f"pandaBaseElevM: {pandaBaseElevM}")
+            # return
             # # # print(f"modJacobian: {pandaBaseJacobian}")
             # # pandaBaseJacobianOG = copy.deepcopy(pandaBaseJacobian)
 
@@ -315,26 +315,77 @@ class holistic_control():
             # # pandaBaseArmJacobM = -self.panda_base_arm.jacobm(J=pandaBaseJacobian, start=self.panda_base_arm.links[4])
 
 
-            c = np.concatenate(
-                (np.zeros(base_dofs+elev_dof_z), pandaBaseElevM.reshape((self.arm_dof+elev_dof_rxy)), np.zeros(6))
-            )   
+            c1 = np.concatenate(
+                (np.zeros(base_dofs+elev_dof_z+elev_dof_rxy), pandaBaseArmM.reshape((self.arm_dof)), np.zeros(6))
+            )  
             
+            c2 = np.concatenate(
+                (np.zeros(base_dofs+elev_dof_z), pandaBaseElevM.reshape((self.arm_dof+elev_dof_rxy)), np.zeros(6))
+            ) 
+
+            # e_norm = (spatial_error-np.min(np.asarray(self.spatialErrorList)))/ (np.max(np.asarray(self.spatialErrorList)) - np.min(np.asarray(self.spatialErrorList)))
+
+
+            # print(f"e_norm: {e_norm}")
+            c = 0.0*(c2-c1)+c1
+
+            # Remove Manipulability Maximization
+            # c = np.concatenate(
+            #     (np.zeros(base_dofs+elev_dof_z+self.arm_dof+elev_dof_rxy), np.zeros(6))
+            # )  
+             
+            # α = np.exp(-1*m/(dedt))
+            # Get last g data points
+            g = 100
+            spatialErrorRecent = np.asarray(self.spatialErrorList[-g:])
+            sETimeRecent = np.asarray(self.sETimeList[-g:])
+
+            # if len(spatialErrorRecent) < g:
+            #     α = 1
+                
+            # else:
+            #     # spatialErrorRecent -= spatialErrorRecent[0]
+            #     # sETimeRecent -= sETimeRecent[0]
+            #     # print(f"spatialErrorRecent {spatialErrorRecent}")
+            #     # print(f"sETimeRecent: {sETimeRecent}")
+            #     # dedt = np.diff(np.asarray(spatialErrorRecent))/np.diff(np.asarray(sETimeRecent))
+            #     # dedt_median = abs(np.average(dedt))
+            #     dedt = abs(np.polyfit(sETimeRecent, spatialErrorRecent, 1)[0])
+            #     # print(f"dedt {dedt}")
+            #     m = .001 # input scalar
+            #     α = np.exp(-1*m/(dedt))
+            #     if α == 0:
+            #         # α = 1
+            #         print(f"Weird case alpha 0: dedt: {dedt}")
+            #         break
+            #     print(f"Alpha {α}: dedt: {dedt}")
+            #     c = α * c #  Adjust alpha based on if we get stuck in a local minima 
+
+            
+
+            
+            
+            # print(f"dedt_median: {dedt_median}")
+            # print(f"Alpha: {α}")
+                         
             # Get base to face end-effector
             kε = 0.5
             b2e_T = self.panda_arm.fkine(q=arm_joints[2:]).A
             θε = np.arctan2(b2e_T[1, -1], b2e_T[0, -1])
             ε = kε * θε
             c[0] = -ε
-
+           
 
             # The lower and upper bounds on the joint velocity and slack variable
             lb = -np.r_[self.panda_base_arm.qdlim[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], 10 * np.ones(6)]
             ub =  np.r_[self.panda_base_arm.qdlim[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs], 10 * np.ones(6)]
 
-            Q = np.eye(self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6 )
-            k_a = 0.5
+            # Define Q
+            Q = np.eye(self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs + 6)
+            k_a = 0.4
             Q[: self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs, : self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs] *= k_a # apply k_a to arm joints in Q
-            # Q[2:3,2:3] *= 1 # elevator has less importance, higher number = harder to move
+            Q[3:5,3:5] *= 10 # elevator has less importance, higher number = harder to move
+            # Q[:base_dofs, :base_dofs] *= 1.0/spatial_error
             Q[:base_dofs+elev_dof_z, :base_dofs+elev_dof_z] *= 1.0/spatial_error
             # Slack Q
             Q[self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs :, self.arm_dof+elev_dof_z+elev_dof_rxy+base_dofs :] = (1.0 / spatial_error) * np.eye(6)
@@ -356,6 +407,7 @@ class holistic_control():
             # Turn Virtual Joints into motion
             qd_bθ = qd[0]
             qd_bδ = qd[1]
+            
             qd_bε = qd[2]
             qd_bεx = qd[3]
             qd_bεy = qd[4]
@@ -394,7 +446,7 @@ class holistic_control():
             arm_qd = [qd[5], qd[6], qd[7], qd[8], qd[9], qd[10], qd[11]]
             self.sendArmVels(arm_qd)
 
-            print(f"Error: {spatial_error}")
+            # print(f"Error: {spatial_error}")
 
             # Publish manipulabulity metric (Yoshikawa)
             # Use this to record data and evaluate performance
@@ -423,18 +475,19 @@ class holistic_control():
         
         
 
-
-
 if __name__ == "__main__":
     
     ## Set homogenmous Transformation Matrix as goal coordinate system wrt to world coordinate system
-    goalT = np.array(([1, 0, 0, 2.3],
-                      [0, -1, 0, 0.3],
-                      [0, 0, -1, 1.75],
+    # goalT = np.array(([1, 0, 0, 2.3],
+    #                   [0, -1, 0, 0.0],
+    #                   [0, 0, -1, 1.95],
+    #                   [0, 0, 0, 1]))
+
+    # Hard goal 
+    goalT = np.array(([0, 0, 1, 2.3],
+                      [-1, 0, 0, 0.3],
+                      [0, -1, 0, 0.5],
                       [0, 0, 0, 1]))
-
     holistic = holistic_control(goalT=goalT)
-    # holistic.__init__(goalT)
-
     holistic.main_loop(goalT)
     # rospy.spin()
