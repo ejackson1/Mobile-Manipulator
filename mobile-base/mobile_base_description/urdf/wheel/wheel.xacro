@@ -8,18 +8,22 @@
       <origin xyz="${origin}" rpy="0 0 0" /><!-- TODO: figure out origin of wheel-->
       <parent link="${parent}"/>
       <child link="wheel_${index}" />
-      <axis xyz="0 1 0"/>
+      <axis xyz="1 0 0"/>
     </joint>
 
     <link name="wheel_${index}">
       <visual>
-        <origin xyz=".0795 -.078 -.113" rpy="0 0 ${PI/2}" />
+        <!-- <origin xyz=".0795 -.078 -.113" rpy="0 0 ${PI/2}" /> -->
+        <origin xyz="0 0 0" rpy="0 0 ${PI/2}" />
         <geometry>
-          <mesh filename="$(find mobile_base_description)/meshes/mecanum_wheel.STL" scale="0.001 0.001 0.001"/>
+          <mesh filename="$(find mobile_base_description)/meshes/WPI_Mecanum_Wheel_fixed_origin.stl" scale="0.001 0.001 0.001"/>
         </geometry>
       </visual>
+          <!-- <origin xyz="0 0 0" rpy="${PI/2} 0 0"/> might have to rotate if wheel is flipped -->
+      
       <collision>
-        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/> <!--might have to rotate if wheel is flipped-->
+        
+        <origin xyz="0 0 0" rpy="0 0 ${PI/2}"/>
         <geometry>
           <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
@@ -36,13 +40,29 @@
     </link>
 
     <!-- <transmission name="wheel_${index}_joint_transmission">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="wheel_${index}_joint">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="wheel_${index}_joint_motor"> -->
+          <!-- <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface> -->
+          <!-- <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission> -->
+
+      <!-- Load Mecanum Wheel Motors -->
+  <!-- <xacro:macro name="wheel_motor_xacro" params="motor " />
+
+
+  <transmission name="motor_1_trans">
     <type>transmission_interface/SimpleTransmission</type>
-    <joint name="wheel_${index}_joint">
+    <joint name="wheel_1_joint">
         <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
     </joint>
-    <actuator name="wheel_${index}_joint_motor">
+    <actuator name="wheel_1_joint_motor">
         <mechanicalReduction>1</mechanicalReduction>
-    </actuator> -->
+    </actuator>
+  </transmission> -->
     
     <gazebo reference="wheel_${index}">
       <mu1 value="0.0"/>

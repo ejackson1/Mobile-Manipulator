@@ -5,7 +5,8 @@ panda:
         publish_rate: 50
 
     gazebo_ros_control:
-        type: effort_controllers/JointTrajectoryController
+        # type: effort_controllers/JointTrajectoryController
+        type: velocity_controllers/JointGroupVelocityController
         joints:
             - panda_joint1
             - panda_joint2
@@ -24,10 +25,10 @@ panda:
             panda_joint6: { p: 7000, d: 50, i: 0.01, i_clamp: 1 }
             panda_joint7: { p: 2000, d: 20, i: 0.0, i_clamp: 1 }
 
-        constraints:
-            goal_time: 2.0
+        # constraints:
+        #     goal_time: 2.0
 
-        state_publish_rate: 25
+        # state_publish_rate: 25
     panda_finger1_controller:
         type: effort_controllers/JointPositionController
         joint: panda_finger_joint1
@@ -36,3 +37,38 @@ panda:
         type: effort_controllers/JointPositionController
         joint: panda_finger_joint2
         pid: { p: 25, d: 10.0, i: 0, i_clamp: 1 }
+
+
+    # Add Indvidiaul Joint Controllers
+    # panda_1_joint_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint1
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}
+
+    # panda_2_joint_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint2
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}
+
+    # panda_3_joint_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint3
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}
+
+    # panda_4_rotation_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint4
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}    
+
+    # panda_5_rotation_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint5
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}    
+    # panda_6_rotation_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint6
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}    
+    # panda_7_rotation_controller:
+    #     type: effort_controllers/JointTrajectoryController
+    #     joint: panda_joint7
+    #     pid: {p: 100.0, i: 10.0, d: 0.01}    

@@ -5,7 +5,7 @@
     <!-- Gazebo & GUI Configuration -->
   <arg name="gazebo"      default="true"  doc="Should the gazebo simulation be launched? Use false in case if you want to include this file and launch gazebo yourself" />
   <arg name="world"       default="worlds/empty.world" doc="Filename to a SDF World for gazebo to use" />
-  <arg name="rviz"        default="false" doc="Should RVIz be launched?" />
+  <arg name="rviz"        default="true" doc="Should RVIz be launched?" />
   <arg name="x0"          default="0" />
   <arg name="y0"          default="0" />
   <arg name="z0"          default="1" />
@@ -43,36 +43,58 @@
   <param name="robot_description" command="xacro $(find panda_insert_description)/urdf/panda_insert.xacro
                                           origin:='$(arg x0) $(arg y0) $(arg z0)'" />
 
-  <!-- Spawn panda_insert robot -->
-  <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model"
-  args="-param robot_description -urdf -model robot" output="screen" />
+
 
   <!-- Launch arm controllers -->
   <node name="panda_moveit_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"
-    args="joint_state_controller gazebo_ros_control panda_finger1_controller panda_finger2_controller
+    args="joint_state_controller 
+          gazebo_ros_control
+          panda_finger1_controller
+          panda_finger2_controller
           panda_x_joint_controller
           panda_y_joint_controller
           panda_z_joint_controller
-          panda_z_rotation_controller"  
+          panda_z_rotation_controller
+          panda_rx_joint_controller
+          panda_ry_joint_controller"  
           ns="/panda" />
 
-  
+
+
   <!-- Launch robot_state_publisher -->
   <node name="panda_moveit_robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen">
     <remap from="joint_states" to="panda/joint_states" />
   </node>
+  <!-- Launch joint_state_publisher -->
+  <!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" >
+    <remap from="joint_states" to="panda/joint_states"/>
+  </node> -->
+
+    <!-- Spawn panda_insert robot -->
+  <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model"
+    args="-param robot_description -urdf -model robot
+    -J panda_joint1 0
+    -J panda_joint2 -0.3
+    -J panda_joint3 0
+    -J panda_joint4 -2.2
+    -J panda_joint5 0
+    -J panda_joint6 2
+    -J panda_joint7 0.78539816
+    " output="screen" />
 
   <!-- Launch moveit -->
   <include file="$(find panda_moveit_config)/launch/move_group.launch" pass_all_args="true">
     <remap from="joint_states" to="panda/joint_states" />
     <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution" value="false"/>
+    <arg name="fake_execution" value="true"/>
     <arg name="info" value="true"/>
     <arg name="pipeline" value="$(arg pipeline)"  />
   </include>
 
-  <node  pkg="rviz" type="rviz" output="screen" name="rviz" if="$(arg rviz)" args="-d $(find abstract_arm)/rviz_config/motion_planning.rviz"/>
-
+  <node  pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find abstract_arm)/rviz_config/holistic_planning.rviz"/>
+  
+<!--   
+  <include file="$(find mobile_base_description)/launch/spawn_base.launch" /> -->
   <!-- <include file="$(find abstract_arm)/launch/moveItServer.launch"/> -->
 
 </launch>

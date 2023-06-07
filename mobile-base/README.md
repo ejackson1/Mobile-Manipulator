@@ -1,11 +1,18 @@
-# Mobile Robotic Base
+# Mobile Manipulator
 
+Respository for the ROS Gazebo simulation of a Mobile Manipulator. This project is an extension of the [Mobile and Modular Robotic base](https://github.com/RoboticMobileBaseMQP/mobile-base), a project developed for the completion of the WPI Major Qualifying Project requirement. Last Updated: May 2023.
 
-Repository for the description and gazebo simulation of a Mobile Robotic Base, a project developed for the completion of the WPI Major Qualifying Project requirement. Last updated: May 2022
+![Robot Render](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/Robot%20Render.png?raw=true)
 
-![Robot Render](https://github.com/RoboticMobileBaseMQP/mobile-base/blob/main/docs/Robot%20Render.png?raw=true)
+## Holistic Control
+
+This simulation is based heavily off [Holistic Mobile Manipulation](https://jhavl.github.io/holistic/), developed by Jesse Haviland, Niko Sünderhauf, and Peter Corke. We extend their research through additional redudency in a 3 degree of freedom (DOF) parallel manipulator elevator. We simplify the elevator as a serial linkage consisting of a prismatic joint and two revolute joints. 
+
+![Robot Simplification](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/mm_simplification.png?raw=true)
+
 
 ## Installation
+
 There are two types of installation necessary to communicate with the mobile base. If only working with simulation, then only the Host Computer installation needs to be followed. However, if working with the real Mobile Base, the Raspberry Pi installation will also need to be followed.
 
 ### Host Computer Installation 
@@ -81,14 +88,32 @@ export ROS_HOSTNAME=`hostname -I | cut -f1 -d' '`
 
 One final note: the `franka_description` repository only includes the URDF information for the simulation, as we didn’t have enough time to implement it on the Pi. To actually control the Panda arm, you’ll need to clone the full repository from [here](https://github.com/frankaemika/franka_ros) and monkey it with it on the Pi. Good luck!
 
+
+
 ## Usage
 
 This simulation is still in development. The following is a description of some of the launch files included in this repository.
 
+
 ### simulated_arm_and_base.launch
 `roslaunch mobile_base_simulation simulated_arm_and_base.launch arm:=xyz`
 
-Simulates the mobile robot in Gazebo. Use `arm:=` to specify which arm should be loaded. Available arms are `panda` and `gen3`.
+Simulates the mobile robot in Gazebo. Use `arm:=` to specify which arm should be loaded. Available arms are `panda` and `gen3`. Note, significant changes have been made and `gen3` is no longer tested / developed.
+
+### holistic_control.py
+`rosrun mobile_base_control holistic_control.py`
+
+Spawns controller node to move Mobile Manipulator to manuever to desired Pose
+
+### holistic_listener.py
+`rosrun mobile_base_control holistic_listener.py`
+
+Spawns listener nodes to plot Mobile Manipulator metrics over the duration of motion. Listening metrics include Yoshikawa Manipulability, Jerk, or positional data.
+
+### velocity_control.py
+`rosrun mobile_base_control velocity_control.py`
+
+Spawns a proportional velocity controller to orientate the arm into a highly manipulatible pose. This can also be used to command the arm into the same starting position reliably. This file can be easily edited to adjust the configuration the arm converges to. 
 
 ### base_sim_alone.launch
 `roslaunch mobile_base_simulation base_sim_alone.launch`
@@ -108,7 +133,7 @@ Launch this file on the Raspberry Pi for controlling the mobile base and interfa
 ### host_moveit.launch
 `roslaunch kortex_insert_description host_moveit.launch`
 
-Launches MoveIt! on the host computer. Used to interface with robot arms when connected to the Pi.
+Launches MoveIt! on the host computer. Used to interface with robot arms when connected to the Pi. Note, MoveIt functionality in Panda simulation has been replaced with alternative controllers. 
 
 ### remote_kinova_driver.launch
 `roslaunch kortex_insert_description remote_kinova_driver.launch`

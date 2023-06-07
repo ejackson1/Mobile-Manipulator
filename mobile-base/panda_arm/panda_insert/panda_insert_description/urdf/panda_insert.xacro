@@ -1,23 +1,35 @@
 <?xml version="1.0"?>
 <robot name="panda_insert" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:arg name="origin" default="0 0 1" />
+  <xacro:arg name="origin" default="-0.05387925 0 1" />
 
   <xacro:include filename="$(find franka_description)/robots/panda_arm_hand.urdf.xacro" />
+  <!-- <xacro:include filename="$(find mobile_base_description)/urdf/base/model.xacro" /> -->
 
   <link name="world" />
 
+  <!-- <joint name="chassis_MI_joint" type="prismatic">
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+    <parent link="insert_link"/>
+    <child link="chassis_link" />
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" lower="-1000" upper="1000" />
+  </joint> -->
+
+  
+
   <joint name="insert_link_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <parent link="panda_link0"/>
-    <child link="insert_link" />
+    <origin xyz="0.05387925 0 0" rpy="0 0 0" />
+    <parent link="insert_link"/>
+    <child link="panda_link0" />
   </joint>
+
 
   <link name="insert_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <!-- <box size=".2 .2 .2"/> -->
+
         <mesh filename="$(find mobile_base_description)/meshes/MI_with_TableTop_fixed_origin.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -25,7 +37,7 @@
       <origin xyz="0 0 0"/>
       <geometry>
         <!-- <box size=".2 .2 .2"/> -->
-        <mesh filename="$(find mobile_base_description)/meshes/MI_with_TableTop_fixed_origin.stl" scale="0.001 0.001 0.001"/>
+        <!-- <mesh filename="$(find mobile_base_description)/meshes/MI_with_TableTop_fixed_origin.stl" scale="0.001 0.001 0.001"/> -->
       </geometry>
     </collision>
     <inertial>
@@ -38,6 +50,7 @@
     </inertial>
   </link>
 
+
    <!-- Load world prismatic joints-->
   <xacro:macro name="prismatic_joint_macro" params="axis_name origin:='0 0 0' axis parent child">
     <joint name="panda_${axis_name}_joint" type="prismatic">
@@ -49,14 +62,17 @@
     </joint>
     
     <link name="arm_${axis_name}_link">
-    <inertial>
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <mass value="1" />
-    <inertia
-        ixx="1.0" ixy="0.0" ixz="0.0"
-        iyy="1.0" iyz="0.0"
-        izz="1.0" />
-    </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </visual>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="1" />
+      <inertia
+          ixx="1.0" ixy="0.0" ixz="0.0"
+          iyy="1.0" iyz="0.0"
+          izz="1.0" />
+      </inertial>
     </link>
 
     <transmission name="panda_${axis_name}_transmission">
@@ -70,15 +86,91 @@
     </transmission>
   </xacro:macro>
 
+ <!--Load revolute joints-->
+  <xacro:macro name="revolute_joint_macro" params="axis_name axis parent child mimic">
+  
+  <joint name="panda_${axis_name}_joint" type="revolute">
+    <!-- <origin xyz="${origin}" rpy="0 0 0" /> -->
+    <limit lower="-1000" upper="1000" effort="1000" velocity="2"/>
+
+    <parent link="${parent}"/>
+    <child link="${child}" />
+    <axis xyz="${axis}"/>
+    <!-- <limit effort="1000" velocity="2"/> -->
+    <!-- <mimic joint="panda_rx_joint" multiplier="1.0"/> -->
+  </joint>
+
+    <link name="arm_${axis_name}_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="1" />
+      <inertia
+        ixx="1.0" ixy="0.0" ixz="0.0"
+        iyy="1.0" iyz="0.0"
+        izz="1.0" />
+      </inertial>
+    </link>
+
+
+    <transmission name="panda_${axis_name}_transmission">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="panda_${axis_name}_joint">
+          <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="panda_${axis_name}_joint_motor">
+          <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+
   <xacro:prismatic_joint_macro axis_name="x" origin="$(arg origin)" axis="1 0 0" parent="world" child="arm_x_link"/>
   <xacro:prismatic_joint_macro axis_name="y" axis="0 1 0" parent="arm_x_link" child="arm_y_link"/>
-  <xacro:prismatic_joint_macro axis_name="z" axis="0 0 1" parent="arm_y_link" child="arm_z_link"/>
+  
+  <xacro:revolute_joint_macro axis_name="rx" axis="1 0 0" parent="arm_z_link" child="arm_rx_link" mimic='true'/>
+  <xacro:revolute_joint_macro axis_name="ry" axis="0 1 0" parent="arm_rx_link" child="arm_ry_link" mimic="false"/>
+
+
+  
+  <joint name="panda_z_joint" type="prismatic">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="arm_y_link"/>
+    <child link="arm_z_link" />
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" lower="-100" upper="100" velocity="2"/>
+  </joint>
+
+  <link name="arm_z_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="1" />
+      <inertia
+          ixx="1.0" ixy="0.0" ixz="0.0"
+          iyy="1.0" iyz="0.0"
+          izz="1.0" />
+    </inertial>
+  </link>
+
+  <transmission name="panda_z_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="panda_z_joint">
+        <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="panda_z_joint_motor">
+        <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  
+
+  <!-- <xacro:prismatic_joint_macro axis_name="z" axis="0 0 1" parent="arm_y_link" child="arm_z_link"/> -->
+
 
   <!-- Load world rotation joint -->
   <joint name="panda_z_rotation_joint" type="continuous">
     <origin xyz="0 0 0" rpy="0 0 0" />
-    <parent link="arm_z_link"/>
-    <child link="panda_link0" />
+    <parent link="arm_ry_link"/>
+    <child link="insert_link" />
     <axis xyz="0 0 1"/>
     <limit effort="1000.0" velocity="2"/>
   </joint>
@@ -99,5 +191,15 @@
       <robotNamespace>/panda</robotNamespace>
       <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
     </plugin>
+
+    <!-- <plugin name="gazebo_mimic_joint" filename="libroboticsgroup_upatras_gazebo_mimic_joint_plugin.so">
+      <robotNamespace>/panda</robotNamespace>
+      <gazebo reference="panda_insert"/>
+      <joint>panda_rx_joint</joint>
+      <mimicJoint>panda_ry_joint</mimicJoint>
+      <maxEffort>1000</maxEffort>
+      <hasPID></hasPID>
+    </plugin> -->
   </gazebo>
 </robot>
+
