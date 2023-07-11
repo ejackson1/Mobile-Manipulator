@@ -1,15 +1,48 @@
 # Mobile Manipulator
 
-Respository for the ROS Gazebo simulation of a Mobile Manipulator. This project is an extension of the [Mobile and Modular Robotic base](https://github.com/RoboticMobileBaseMQP/mobile-base), a project developed for the completion of the WPI Major Qualifying Project requirement. Last Updated: May 2023.
+Respository for the ROS Gazebo simulation of a Mobile Manipulator. This project is an extension of the [Mobile and Modular Robotic base](https://github.com/RoboticMobileBaseMQP/mobile-base), a project developed for the completion of the WPI Major Qualifying Project requirement. Last Updated: July 2023.
 
-![Robot Render](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/Robot%20Render.png?raw=true)
+<!-- ![Robot Render](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/Robot%20Render.png?raw=true) -->
+
+![Robot Render](docs/Robot_Render.png)
+
+## What is a Mobile Manipulator?
+
+A Mobile Manipulator can be defined as a robot arm (a manipulator) attached to a mobile base. These systems are usually extremely redudent by having many Degrees of Freedom (DOFs). Our system has 12/13 DOFs depending on the desired configuration. 
+
+A Mobile Manipulator is a highly valuable asset to researchers and manufacturers. A traditional robot arm is constrained to a workspace limited by joint limits, link lengths, and self collision. A Mobile Manipulator allows this workspace to travel which enables significantly more possibilties such as long distance pick and place, rescue operations, bomb defusing, etc. 
+
+
+## Our Robot's Capabilities
+
+The initial purpose of our Mobile Manipulator was to create a mobile base that can be modular with any robot arm.
+
+### Modularity
+![modularinsert](docs/modularinsert.gif)
+
+The Modular Insert (MI) snaps securely into the mobile base, houses the manipulator controller box (if it has one), and connects to a Universal Plug that communicates with the RPi. We created a charging station that can hold the MI above ground to let the base drive underneath and 'hot-swap' between MI's if desired. The MI also has handles to let two people manually lift the MI out of the mobile base.
+
+![manualhotswapping](docs/manualhotswapping.gif)
+
+![automatedhotswapping](docs/demoChargingStation.gif)
+
+### Mobility
+
+Mobility can be broken into two components: chassis/drivetrain and the elevator. The mobile base is a holonomic drive system through independently actuated mecanum wheels. The elevator is a parallel manipulator that can be simplified as three prismatic joints. However, due to internal slack tolerances to the scissor jacks there is a significant amount of 'wiggle room' that lets the MI pivot. 
+
+![24invertical](docs/24invertical.gif) 
+
+![pivoting](docs/elevatorpivot.gif)
+
 
 ## Holistic Control
 
+With a Mobile Manipulator system it became imperative to find a method to control the system to achieve basic goals such as pick and place. We simulate the mobile robot to ensure the controller will not produce motion that could damage the robot arms in the real world. 
+
 This simulation is based heavily off [Holistic Mobile Manipulation](https://jhavl.github.io/holistic/), developed by Jesse Haviland, Niko Sünderhauf, and Peter Corke. We extend their research through additional redudency in a 3 degree of freedom (DOF) parallel manipulator elevator. We simplify the elevator as a serial linkage consisting of a prismatic joint and two revolute joints. 
 
-![Robot Simplification](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/mm_simplification.png?raw=true)
-
+<!-- ![Robot Simplification](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/mm_simplification.png?raw=true) -->
+![Robot Simplfication](docs/mm_simplication.png)
 
 ## Installation
 
@@ -20,9 +53,9 @@ There are two types of installation necessary to communicate with the mobile bas
 This project was developed using ROS as the framework of choice. Download and install ROS Noetic from [here](http://wiki.ros.org/noetic/Installation). Create a workspace using the following commands: 
 
 ```
-mkdir MQP_ws/src
-cd MQP_ws
-catkin_make
+mkdir MM_ws/src
+cd MM_ws
+catkin_make_isolated
 ```
 
 Remove the generated CMakeLists.txt with
@@ -36,7 +69,7 @@ sudo rm CMakeLists.txt
 Next, clone this repo using 
 
 ```
-git clone https://github.com/RoboticMobileBaseMQP/mobile-base.git
+git clone https://github.com/ejackson1/Mobile-Manipulator.git
 ```
 
 Next install the repository for the kortex arm:
@@ -89,6 +122,96 @@ export ROS_HOSTNAME=`hostname -I | cut -f1 -d' '`
 One final note: the `franka_description` repository only includes the URDF information for the simulation, as we didn’t have enough time to implement it on the Pi. To actually control the Panda arm, you’ll need to clone the full repository from [here](https://github.com/frankaemika/franka_ros) and monkey it with it on the Pi. Good luck!
 
 
+## Bootup / Initialization
+### Physical Robot
+In the back of the mobile base there is a power switch to turn the robot on. Due an accident damaging the batteries, the robot should only be powered on with the charger in place. Reference New Batteries in `Future Recomendations, Improvements, Bug Fixes` for more information.
+
+The procedure for a safe bootup is as follows:
+1. Physically check the robot for any problems such as unplugged wires, bolts untightened, or chains not fully tightened. 
+2. If the robot arm is attached, ensure that it is fully bolted to the MI, and that the MI is securely attached to the mobile base. 
+3. Plug in and turn on the charging system. 
+4. Connect the robo charging pads to the robot to the front of the robot. It is a magnetic connection. ENSURE THE PADS ARE IN THE CORRECT ORIENTATION AS A MISCONFIGURATION WILL BLOW UP THE BMS AND DAMAGE BATTERIES.
+5. Turn on the robot by flipping the power switch located behind the robot. 
+6. Keep the robot charging for atleast 1 minute after bootup. After 1 minute, it is okay to remove the robo pads. It is also fine to keep them attached, but they may come loose if the robot is driving. There is 480W of charging power so be sure not to short it out on the robots chassis if it comes loose!
+7. Follow the RPI setup guide to connect to the base with an xbox controller or host computer. 
+8. If the Panda arm is connected, ensure all connections (ethernet and power) are connected to the MI. Further, most robotic arm controllers have a power switch- ensure this is turned on, too. 
+9. If the CIM motor controllers LEDs blink and send unwanted commands to the motors, turn off the mobile base. This is an ongoing bug that does not have a perminent fix. We utilized chokes on our PWM wires to minimize electrical noise and this reduced the problem but it still sometimes occurs.
+10. To turn the robot off, press the red button on the power switch. This will cut the power off to the system. 
+
+### Simulation
+
+To run the simulation for the first time we must initalize our workspace.
+```
+$ cd MM_ws
+$ catkin_make_isolated
+$ source devel_isolated/setup.bash
+```
+After initalization, we can spawn the robot in Gazebo with the necessary backend nodes and run the controller.
+```
+$ roslaunch mobile_base_simulation simulated_arm_and_base.launch arm:=panda
+$ rosrun mobile_base_control holistic_control.py
+```
+Ensure that the `holistic_control` node is only run once Gazebo has finished initalizing. This can usually take about 10 seconds to 2 minutes depending on your hardware. Once run, the mobile manipulator will attempt to travel to a goal Pose. This controller will minimize the distance from the goal Pose to the Pose of the `panda_hand` linkage. 
+
+Optionally, a listener node can be instantiated to record data output from the `holistic_control.py` node with 
+```
+$ rosrun mobile_base_control holistic_listener.py
+```
+A velocity controller for just the Panda arm was also created. Currently, when run it will move the arm into a highly manipulable position using a P controller. I utilized this node when `$ roslaunch mobile_base_simulation simulated_arm_and_base.launch arm:=panda` gave a bogus initial position despite the XML condition specified. It can be run with
+```
+$ rosrun mobile_base_control velocity_control.py
+```
+
+
+## Future Recomendations, Improvements, Bug Fixes
+
+I divided some TODO's into Hardware and Software for clarity. These are in no particular order and for some problems we have already identified a viable solution. Certainly, it is not the only solution but it our recomendation. This project is vast, complex, and unforgiving to mistakes. We believe it would be extremely beneficial to implement atleast some of these ideas to have a more robust system.
+
+### Hardware
+1. Redesign and Implement New Drive Train.
+    * The current implementation is an outdated mecanum wheel assembly driven through chain and sprocket. The tensioner will tighten the chain so it may firmly drive the sprocket without slack, but it also forces the suspension into compression.  We found that to have suitable tension on the drivetrain, the suspension would be 90-100% fully compressed. By having the suspension fully compressed, the wheels will be challenged to extend when over holes or obstacles. Our initial goal was to implement a suspension system to allow all wheels to simultaneously make contact with the floor. It is critical all mecanum wheels make contact with the floor to allow the driving dynamics to function as intended. Further, we found that the suspension system was too weak to handle the shear forces generated from the holonomic capabilities of mecanum wheels. While ‘strafing’ (perpendicular motion relative to the front of the base), the suspension system would cave inwards. When reducing the system to a 2DOF spin in place/drive system, the load was significantly less. 
+    * **Solution**: We recommend a complete redesign of the suspension, tensioner, and drive train. Holonomic capabilities are the highest priority as this allows the base to be extremely maneuverable. We suggest continuing to use mecanum wheels with an updated design or to implement swerve drive. An updated mecanum wheel setup should be less costly than a swerve setup. However, we recommend purchasing new mecanum wheels (the current ones are ~10 years old), a new tensioner, and a suspension redesign. Our design opted to be the most budget friendly and it sacrificed usability. 
+2. Elevator Joint Redesign
+    * The scissor jacks used as a parallel manipulator are bolted directly to the Modular Insert and base. This means that pivoting is only possible due to the tolerances inside of the scissor jacks themselves. Ideally, the connection points should be ball joints for less constricted motion. When we initially designed and built the elevator system, pivoting was not intended. It was only after how useful it appeared to be did we consider it a design feature. In simulation, we make use of the flexibility provided by the scissor jacks.
+3. Raspberry Pi 4b Upgrade
+    * The Raspberry Pi4b struggled to compile the drivers necessary to operate the Kinova Gen4 and Panda Franka Emika arm due to small amounts of RAM (it actually couldn’t compile on the 2GB module). Further, the Pi is not powerful enough to handle high end sensor data, such as a LiDAR. The Pi is also not shielded adequately and a 3D printed shield should be designed and implemented.
+    * **Solution**: A Nvidea Xavier was purchased to replace the Pi and become the main board on the base. Contact Jessica De Oliveira to receive the board as the sent model was not correct and it needs to be returned. 
+4. SICK LiDAR Addition
+    * A SICK LiDAR is available to be added to the Modular Insert. This is a 2D LiDAR that (hopefully) can be implemented with an understanding of the elevator's nature to build a 3D model of its surroundings. In simulation, we feed the goal as a static Pose in world space but in the real world this Pose can be determined by the SICK LiDAR. The LiDAR needs to be mounted, as well. Reference the CAD for the designated location.
+5. LED Implementation
+    * We put LEDS on the bottom of the base to be used as debugging for the real base. However, this was a low priority item that never ended up being implemented. The LEDs are connected to the Pi and can be controlled with simple SPI communications. The LEDs are knockoff Adafruit NeoPixels and function exactly the same
+6. New Batteries
+    * The current batteries were damaged by accidentally shorting the electrical system by inverting the charging system. As a result, the Battery Management System (BMS) exploded and the batteries were damaged. With the damaged batteries, the robot is susceptible to not turn on. We monitored the batteries and found that during initialization they will flicker between 7V and their rated voltage and eventually stabilize to their rated voltage or drop to 0V. **This behavior is extremely concerning and new batteries should be purchased at some point.** We found that if the charger was connected to the robot during initialization that it would always successfully bootup. After one minute of bootup, the charger may be removed if desired. 
+7. Attach SRX Mag Encoder to the Drive Train
+    * SRX Mag Encoders were purchased to easily attach to the CIM motors to track the position of the robot. These encoders were not physically added. Contact Jessica De Oliveira to have these encoders given to the new team. Please reference the quote 11990756 in the Google Drive.
+
+### Software
+
+1. Real Life Hardware 
+    * Upgrade/translate Pi ROS nodes into Nvidea Xavier nodes
+    * Implement ROS node to handle new encoder data from SRX Mag Encoder
+    * Implement ROS node to process SICK LiDAR data utilizing processing power of Nvidea Xavier
+        * Incorporate SICK LiDAR 2D data into a 3D model representation by changing it's configuration with the elevator. For example, imagine a 2D scan moving down a wall, if you stack the data you can visualize the wall!
+    * Implement `holistic_control.py` node onto the Nvidea Xavier after tweaking it to fit the real robot and not the simulation.
+2. Simulation
+    * OOP upgrades, especially in the control section (`mobile-base/mobile_base_control`). There are many areas that can benefit from better code practices to improve readability and clarity.
+    * Adding SICK LiDAR to sensor to the simulation.
+    * Accurate model of parallel elevator structure instead of serial linkage simplification
+    * Stop robot from spawning in ground ~5cm. A cheap fix is to simply spawn the MI 5cm taller.
+
+## Helpful Links
+Below are some links to where you can locate information from previous meetings, relevant repositories, and the CAD repo for the Mobile Manipulator. Please email ejackson@wpi.edu if you are having difficulty gaining access. 
+1. Google Drive: https://drive.google.com/drive/folders/1HUbkGtqpoOaKrL5r19ZUg35KUtvNREoB?usp=sharing
+    * Meeting Notes & Capstone Presentation 
+    * Financial Information
+    * Manipulability Papers & Idea Exploration
+2. Panda Robot: https://github.com/frankaemika/franka_ros
+3. Kortex Gen3: https://github.com/Kinovarobotics/ros_kortex
+4. SICK LiDAR: https://github.com/SICKAG/sick_scan_xd
+5. MQP Repo: https://github.com/RoboticMobileBaseMQP/mobile-base
+6. MQP Paper: 
+7. MEGA CAD Repo: https://mega.nz/folder/Nd42hBbZ#FcceDbHR-tFMgTfWMoZtRg
+8. Zotero Library: https://www.zotero.org/groups/4923979/mobile_manipulation/library
 
 ## Usage
 
