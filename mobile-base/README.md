@@ -10,6 +10,8 @@ Respository for the ROS Gazebo simulation of a Mobile Manipulator. This project 
 
 A Mobile Manipulator can be defined as a robot arm (a manipulator) attached to a mobile base. These systems are usually extremely redudent by having many Degrees of Freedom (DOFs). Our system has 12/13 DOFs depending on the desired configuration. 
 
+![DofExploded](docs/dofexploded.png)
+
 A Mobile Manipulator is a highly valuable asset to researchers and manufacturers. A traditional robot arm is constrained to a workspace limited by joint limits, link lengths, and self collision. A Mobile Manipulator allows this workspace to travel which enables significantly more possibilties such as long distance pick and place, rescue operations, bomb defusing, etc. 
 
 
@@ -43,6 +45,15 @@ This simulation is based heavily off [Holistic Mobile Manipulation](https://jhav
 
 <!-- ![Robot Simplification](https://github.com/Mobile-Manipulator/mobile-base/blob/main/docs/mm_simplification.png?raw=true) -->
 ![Robot Simplfication](docs/mm_simplication.png)
+
+
+## Holistic Control Demo's
+Demo'd below is the execution of the steps in `Bootup / Initialization > Simulation`
+
+Click to play!
+<!-- ![Demo Videos](https://youtu.be/WngMKqCbG34) -->
+[![Demo Videos](docs/thumbnail.png)](https://youtu.be/WngMKqCbG34)
+
 
 ## Installation
 
@@ -198,6 +209,7 @@ I divided some TODO's into Hardware and Software for clarity. These are in no pa
     * Adding SICK LiDAR to sensor to the simulation.
     * Accurate model of parallel elevator structure instead of serial linkage simplification
     * Stop robot from spawning in ground ~5cm. A cheap fix is to simply spawn the MI 5cm taller.
+    * The collision box of the MI is slightly innacurate and misplaced. A simple translational adjustment should be sufficient.
 
 ## Helpful Links
 Below are some links to where you can locate information from previous meetings, relevant repositories, and the CAD repo for the Mobile Manipulator. Please email ejackson@wpi.edu if you are having difficulty gaining access. 
